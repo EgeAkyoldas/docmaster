@@ -6,9 +6,11 @@ const KEY_STORAGE = "docmaster_gemini_api_key";
 const MODEL_STORAGE = "docmaster_gemini_model";
 
 export const GEMINI_MODELS = [
-  { id: "gemini-2.5-flash-lite",    label: "Flash 2.5 Lite",  badge: "Fastest" },
-  { id: "gemini-2.5-flash",         label: "Flash 2.5",      badge: "Smart" },
-  { id: "gemini-2.5-pro",           label: "Pro 2.5",        badge: "Best" },
+  { id: "gemini-2.5-flash-lite",  label: "Flash 2.5 Lite",  badge: "Fastest" },
+  { id: "gemini-2.5-flash",       label: "Flash 2.5",       badge: "Fast" },
+  { id: "gemini-2.5-pro",         label: "Pro 2.5",         badge: "Smart" },
+  { id: "gemini-3-flash-preview", label: "Flash 3",         badge: "New" },
+  { id: "gemini-3-pro-preview",   label: "Pro 3",           badge: "Best" },
 ] as const;
 
 export type GeminiModelId = typeof GEMINI_MODELS[number]["id"];

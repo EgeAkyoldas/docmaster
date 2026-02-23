@@ -174,7 +174,9 @@ export function ApiKeyModal({ open, currentKey, currentModel, onSave, onClose }:
                           <span className={cn(
                             "text-[9px] font-mono px-1.5 py-0.5 rounded-full border",
                             m.badge === "Fastest" ? "text-green-400 border-green-500/30 bg-green-500/8" :
-                            m.badge === "Smart"   ? "text-cyan-400 border-cyan-500/30 bg-cyan-500/8" :
+                            m.badge === "Fast"    ? "text-cyan-400 border-cyan-500/30 bg-cyan-500/8" :
+                            m.badge === "Smart"   ? "text-blue-400 border-blue-500/30 bg-blue-500/8" :
+                            m.badge === "New"     ? "text-violet-400 border-violet-500/30 bg-violet-500/8" :
                                                     "text-amber-400 border-amber-500/30 bg-amber-500/8"
                           )}>
                             {m.badge}
