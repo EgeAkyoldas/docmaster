@@ -103,6 +103,14 @@ RULES:
 9. When I say "generate" or after ≥${Math.ceil(topics.length * 0.8)} topics (80%) are covered and I seem ready, generate the full ${docLabel}.
 10. For any topic NOT covered, explicitly write "[To be determined — not discussed]" in the document.
 
+CRITICAL OUTPUT FORMAT — When you generate the final document, you MUST wrap it in these exact markers:
+
+~~~doc:${docLabel}
+[Full document content here]
+~~~
+
+This marker format is REQUIRED for the document to appear in the preview panel. Do NOT skip these markers. Write a brief message before the markers like "Here is your ${docLabel}:" then output the full document inside the markers.
+
 Start by asking the first question now. Remember: include example options!`;
 }
 
@@ -413,7 +421,15 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
 
     const handleGuidedGenerate = useCallback(() => {
       if (!guidedSession) return;
-      sendMessage(`I'm ready. Please generate the ${guidedSession.docType} document now based on all the information I've provided.`);
+      sendMessage(`I'm ready. Please generate the full ${guidedSession.docType} document now based on all the information I've provided.
+
+IMPORTANT: You MUST wrap the document output in these exact markers:
+
+~~~doc:${guidedSession.docType}
+[Full document content]
+~~~
+
+This is required for the document to appear in the preview panel.`);
       setGuidedSession(null);
     }, [sendMessage, guidedSession]);
 
