@@ -12,10 +12,12 @@ export interface StreamChatOptions {
   message: string;
   temperature?: number;
   maxOutputTokens?: number;
+  /** User-supplied API key (takes priority over server env key) */
+  apiKey?: string;
 }
 
 export async function streamChat(options: StreamChatOptions) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = options.apiKey?.trim() || process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
   const ai = new GoogleGenAI({ apiKey });
 

@@ -15,6 +15,9 @@ export async function POST(req: NextRequest) {
       customInstructions = {},
     } = body;
 
+    // User-supplied API key takes priority over server env key
+    const userApiKey = req.headers.get("x-api-key") || undefined;
+
     if (!message || typeof message !== "string") {
       return NextResponse.json(
         { error: "Message is required" },
@@ -67,6 +70,7 @@ export async function POST(req: NextRequest) {
       message,
       temperature: config.temperature,
       maxOutputTokens: config.maxOutputTokens,
+      apiKey: userApiKey,
     });
 
     // Stream the response as SSE

@@ -10,7 +10,9 @@ import {
   useImperativeHandle,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Square, ChevronDown, ChevronUp, Plus, Zap, MessageSquare, Image as ImageIcon, X, Loader2 } from "lucide-react";
+import { Send, Square, ChevronDown, ChevronUp, Plus, Zap, MessageSquare, Image as ImageIcon, X, Loader2, Settings } from "lucide-react";
+import { useApiKey } from "@/lib/useApiKey";
+import { ApiKeyModal } from "./ApiKeyModal";
 import { ImageModal, ImageModalData } from "./ImageModal";
 import { GuidedProgress, GuidedSession } from "./GuidedProgress";
 import {
@@ -151,6 +153,8 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
     const [imagePromptInput, setImagePromptInput] = useState("");
     const [isGeneratingImage, setIsGeneratingImage] = useState(false);
     const [imageModalData, setImageModalData] = useState<ImageModalData | null>(null);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const { apiKey, saveApiKey, hasKey } = useApiKey();
     const bottomRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -217,7 +221,10 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
       try {
         const res = await fetch("/api/generate-image", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(apiKey ? { "x-api-key": apiKey } : {}),
+          },
           body: JSON.stringify({ prompt }),
         });
         const data = await res.json();
@@ -277,7 +284,10 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
         try {
           const response = await fetch("/api/chat", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              ...(apiKey ? { "x-api-key": apiKey } : {}),
+            },
             body: JSON.stringify({
               message: trimmed,
               history: messages.map((m) => ({ role: m.role, content: m.content })),
@@ -403,6 +413,35 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
     return (
       <>
         <div className="flex flex-col h-full">
+
+        {/* API Key Settings Modal */}
+        <ApiKeyModal
+          open={settingsOpen}
+          currentKey={apiKey}
+          onSave={saveApiKey}
+          onClose={() => setSettingsOpen(false)}
+        />
+
+        {/* Chat Header with Settings */}
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-border">
+          <span className="text-xs font-mono font-semibold text-muted-foreground uppercase tracking-widest">Chat</span>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            title={hasKey ? "API key set — click to change" : "Set your Gemini API key"}
+            className="relative flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono transition-all duration-200 border"
+            style={{
+              background: hasKey ? "rgba(0,229,255,0.06)" : "rgba(251,191,36,0.06)",
+              borderColor: hasKey ? "rgba(0,229,255,0.2)" : "rgba(251,191,36,0.25)",
+              color: hasKey ? "rgb(0,229,255)" : "rgb(251,191,36)",
+            }}
+          >
+            <Settings className="w-3 h-3" />
+            {hasKey ? "API Key ✓" : "Set API Key"}
+            {!hasKey && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            )}
+          </button>
+        </div>
 
         {/* Guided Progress Bar */}
         {guidedSession && (
