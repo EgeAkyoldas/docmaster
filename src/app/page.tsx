@@ -23,6 +23,7 @@ import { ProductGuide, shouldShowGuide } from "@/components/ProductGuide";
 import { SessionCard } from "@/components/SessionCard";
 import {
   getSessions,
+  getSession,
   saveSession,
   deleteSession,
   createSession,
@@ -111,6 +112,15 @@ export default function DashboardPage() {
     setSessions(await getSessions());
   };
 
+  const handleRename = async (id: string, newName: string) => {
+    const s = await getSession(id);
+    if (!s) return;
+    s.name = newName;
+    s.updatedAt = Date.now();
+    await saveSession(s);
+    setSessions(await getSessions());
+  };
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -191,6 +201,7 @@ export default function DashboardPage() {
                     session={session}
                     onOpen={(id) => router.push(`/session/${id}`)}
                     onDelete={handleDelete}
+                    onRename={handleRename}
                   />
                 </motion.div>
               ))}
