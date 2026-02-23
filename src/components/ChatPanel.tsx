@@ -435,7 +435,20 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
         setGuidedSession(null);
         setOpenDropdown(null);
         const instruction = getEffectiveInstruction(action, customInstructions);
-        sendMessage(buildDocPromptLocal(action.label, action.docKey, instruction, existingDocs));
+        const hiddenPrompt: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "user",
+          content: buildDocPromptLocal(action.label, action.docKey, instruction, existingDocs),
+          timestamp: Date.now(),
+          hidden: true,
+        };
+        const alreadyExists = action.docKey in existingDocs;
+        sendMessage(
+          alreadyExists
+            ? `🔄 Regenerate the **${action.label}** document with latest context.`
+            : `📄 Generate the **${action.label}** document now based on everything we discussed.`,
+          { extraHiddenMessages: [hiddenPrompt] }
+        );
       },
       [sendMessage, existingDocs, customInstructions]
     );
