@@ -31,12 +31,25 @@ interface MessageBubbleProps {
   onOptionSelect?: (selected: string[]) => void;
 }
 
-// Parse options from AI text: **Option A:** description
+// Parse options from AI text — handles multiple formats:
+// - **Option A:** description
+// - **Option A: description.**
+// ▸ **Option A: description.** Extra text
+// 1. **Option A:** description
 export function parseOptions(text: string): ParsedOption[] {
   const opts: ParsedOption[] = [];
-  const regex = /[-*]\s*\*\*(?:Option\s+)?([A-Z0-9]+)[):.]?\*\*[:\s]+(.+)/gi;
+  // Pattern 1: bullet/dash + **Label:** text  (bold ends after label)
+  // Pattern 2: bullet/dash + **Label: text**  (bold wraps everything)
+  // Pattern 3: ▸ or numbered prefix variations
+  const regex = /(?:[-*▸►•]|\d+[).]?)\s*\*\*(?:Option\s+)?([A-Z0-9]+)[):.]?(?:\*\*[:\s]+(.+)|[:\s]+(.+?)\*\*\.?\s*(.*))/gi;
   for (const m of text.matchAll(regex)) {
-    opts.push({ label: m[1], text: m[2].trim(), full: m[0].trim() });
+    const label = m[1];
+    // m[2] = text after closing bold (Pattern 1)
+    // m[3] = text inside bold (Pattern 2), m[4] = text after bold (Pattern 2)
+    const desc = m[2] || [m[3], m[4]].filter(Boolean).join(' ');
+    if (label && desc) {
+      opts.push({ label, text: desc.replace(/\*\*/g, '').trim(), full: m[0].trim() });
+    }
   }
   return opts;
 }
@@ -127,7 +140,7 @@ export const MessageBubble = memo(function MessageBubble({ role, content, isStre
               }}
             >
               {options.length > 0
-                ? content.replace(/[-*]\s*\*\*(?:Option\s+)?[A-Z0-9]+[):.]?\*\*[:\s]+.+/gi, '').replace(/\n{3,}/g, '\n\n').trim()
+                ? content.replace(/(?:[-*▸►•]|\d+[).]?)\s*\*\*(?:Option\s+)?[A-Z0-9]+[):.]?(?:\*\*[:\s]+.+|[:\s]+.+?\*\*\.?\s*.*)/gi, '').replace(/\n{3,}/g, '\n\n').trim()
                 : content}
             </ReactMarkdown>
             {isStreaming && (
