@@ -155,6 +155,12 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
     const [imageModalData, setImageModalData] = useState<ImageModalData | null>(null);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const { apiKey, saveApiKey, hasKey } = useApiKey();
+    const apiKeyRef = useRef<string | null>(null);
+    useEffect(() => { apiKeyRef.current = apiKey ?? null; }, [apiKey]);
+    const getApiHeaders = () => ({
+      "Content-Type": "application/json",
+      ...(apiKeyRef.current ? { "x-api-key": apiKeyRef.current } : {}),
+    });
     const bottomRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -222,10 +228,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
       try {
         const res = await fetch("/api/generate-image", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(apiKey ? { "x-api-key": apiKey } : {}),
-          },
+          headers: getApiHeaders(),
           body: JSON.stringify({ prompt }),
         });
         const data = await res.json();
@@ -236,7 +239,8 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
       } catch {
         return { prompt, status: "error" };
       }
-    }, [apiKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // User-initiated manual image generation
     const handleGenerateImageManual = useCallback(async () => {
@@ -285,10 +289,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
         try {
           const response = await fetch("/api/chat", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(apiKey ? { "x-api-key": apiKey } : {}),
-            },
+            headers: getApiHeaders(),
             body: JSON.stringify({
               message: trimmed,
               history: messages.map((m) => ({ role: m.role, content: m.content })),
@@ -375,7 +376,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
           abortRef.current = null;
         }
       },
-      [isStreaming, messages, existingDocs, onMessagesUpdate, onDocumentsUpdate, onStreamingChange, generateImage, apiKey]
+      [isStreaming, messages, existingDocs, onMessagesUpdate, onDocumentsUpdate, onStreamingChange, generateImage]
     );
 
     const handleSend = useCallback(() => sendMessage(input), [input, sendMessage]);
