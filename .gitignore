@@ -41,3 +41,5 @@ next-env.d.ts
 
 # temp
 tsc_output*.txt
+.env
+.agent
