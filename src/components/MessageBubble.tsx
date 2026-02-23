@@ -19,9 +19,11 @@ interface MessageBubbleProps {
   isStreaming?: boolean;
   inlineImages?: InlineImage[];
   onImageClick?: (image: InlineImage) => void;
+  guidedTopics?: string[];
+  guidedAnswered?: number;
 }
 
-export const MessageBubble = memo(function MessageBubble({ role, content, isStreaming, inlineImages, onImageClick }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ role, content, isStreaming, inlineImages, onImageClick, guidedTopics, guidedAnswered = 0 }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
   const isUser = role === "user";
 
@@ -72,10 +74,50 @@ export const MessageBubble = memo(function MessageBubble({ role, content, isStre
           <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
         ) : (
           <div className="markdown-content text-sm">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {/* Strip the ✅ X/Y topics covered line when we render it as a visual list */}
+              {guidedTopics?.length
+                ? content.replace(/✅\s*\d+\/\d+\s*topics? covered[.\s]*/gi, "").trimEnd()
+                : content}
+            </ReactMarkdown>
             {isStreaming && (
               <span className="inline-block w-1.5 h-4 bg-cyan-400 ml-0.5 animate-pulse rounded-sm" />
             )}
+          </div>
+        )}
+
+        {/* Guided topic checklist — shows topic titles with live check/uncheck */}
+        {!isUser && guidedTopics && guidedTopics.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-border/50 space-y-1">
+            <p className="text-[10px] font-mono text-muted-foreground/50 mb-1.5 uppercase tracking-wider">Topics covered</p>
+            {guidedTopics.map((topic, i) => {
+              const done = i < guidedAnswered;
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.2 }}
+                  className={`flex items-center gap-2 text-[11px] font-mono ${
+                    done ? "text-green-400" : "text-muted-foreground/60"
+                  }`}
+                >
+                  <motion.span
+                    animate={done ? { scale: [1.3, 1] } : {}}
+                    transition={{ duration: 0.25 }}
+                    className="text-[10px] flex-shrink-0"
+                  >
+                    {done ? "✅" : "⬜"}
+                  </motion.span>
+                  <span className={done ? "line-through opacity-60" : ""}>{topic}</span>
+                </motion.div>
+              );
+            })}
+            <p className={`text-[10px] font-mono mt-1.5 ${
+              guidedAnswered >= guidedTopics.length ? "text-green-400" : "text-cyan-400/70"
+            }`}>
+              {guidedAnswered}/{guidedTopics.length} covered
+            </p>
           </div>
         )}
 
@@ -188,6 +230,30 @@ export function ImageErrorBubble({ prompt, fallbackText }: { prompt: string; fal
 }
 
 export function TypingIndicator() {
+  const phrases = [
+    "Analyzing your input…",
+    "Building context…",
+    "Crafting a response…",
+    "Thinking it through…",
+    "Reviewing documents…",
+    "Synthesizing ideas…",
+    "Almost there…",
+  ];
+  const [idx, setIdx] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setIdx((i) => (i + 1) % phrases.length);
+        setVisible(true);
+      }, 300);
+    }, 2500);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -197,10 +263,28 @@ export function TypingIndicator() {
       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center">
         <Bot className="w-4 h-4 text-muted-foreground" />
       </div>
-      <div className="bg-secondary border border-border rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
-        <span className="typing-dot w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" />
-        <span className="typing-dot w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" />
-        <span className="typing-dot w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" />
+      <div className="bg-secondary border border-border rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2.5 min-w-[180px]">
+        {/* Animated dots */}
+        <div className="flex gap-1">
+          {[0, 1, 2].map((i) => (
+            <motion.span
+              key={i}
+              className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block"
+              animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
+              transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }}
+            />
+          ))}
+        </div>
+        {/* Rotating text */}
+        <motion.span
+          key={idx}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: visible ? 1 : 0, y: visible ? 0 : -4 }}
+          transition={{ duration: 0.25 }}
+          className="text-xs font-mono text-muted-foreground/70"
+        >
+          {phrases[idx]}
+        </motion.span>
       </div>
     </motion.div>
   );

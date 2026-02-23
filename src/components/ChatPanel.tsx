@@ -498,6 +498,8 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
                 role={msg.role}
                 content={msg.content}
                 onImageClick={setImageModalData}
+                guidedTopics={guidedSession && msg.role === "assistant" ? guidedSession.topics : undefined}
+                guidedAnswered={guidedSession && msg.role === "assistant" ? guidedSession.answeredCount : undefined}
               />
             </div>
           ))}
@@ -507,6 +509,8 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
               role="assistant"
               content={streamingContent.replace(/<doc:[^>]*>[\s\S]*$/i, "").trim() || streamingContent}
               isStreaming
+              guidedTopics={guidedSession?.topics}
+              guidedAnswered={guidedSession?.answeredCount}
             />
           )}
           {isStreaming && !streamingContent && <TypingIndicator />}
