@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Sparkles, X, ChevronDown } from "lucide-react";
+import { MessageSquare, Sparkles, X, ChevronDown, CircleCheck, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface GuidedSession {
@@ -131,7 +131,10 @@ export function GuidedProgress({ session, onGenerateNow, onCancel }: GuidedProgr
                     "flex items-center gap-1.5 text-[10px] font-mono",
                     done ? "text-green-400" : "text-muted-foreground/70"
                   )}>
-                    <span className="text-[9px]">{done ? "✅" : "⬜"}</span>
+                    {done
+                      ? <CircleCheck className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                      : <Circle className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
+                    }
                     {topic}
                   </li>
                 );

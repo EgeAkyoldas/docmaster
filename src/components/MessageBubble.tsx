@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { User, Bot, Copy, Check, ImageIcon, AlertCircle, Download, Maximize2 } from "lucide-react";
+import { User, Bot, Copy, Check, ImageIcon, AlertCircle, Download, Maximize2, CircleCheck, Circle } from "lucide-react";
 import { memo, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -74,7 +74,21 @@ export const MessageBubble = memo(function MessageBubble({ role, content, isStre
           <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
         ) : (
           <div className="markdown-content text-sm">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                input: ({ checked, type, ...rest }) => {
+                  if (type === "checkbox") {
+                    return checked
+                      ? <CircleCheck className="w-3.5 h-3.5 text-green-400 inline-block mr-1 align-text-bottom flex-shrink-0" />
+                      : <Circle className="w-3.5 h-3.5 text-muted-foreground/40 inline-block mr-1 align-text-bottom flex-shrink-0" />;
+                  }
+                  return <input type={type} checked={checked} {...rest} />;
+                },
+              }}
+            >
+              {content}
+            </ReactMarkdown>
             {isStreaming && (
               <span className="inline-block w-1.5 h-4 bg-cyan-400 ml-0.5 animate-pulse rounded-sm" />
             )}
