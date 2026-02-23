@@ -145,7 +145,7 @@ export const MessageBubble = memo(function MessageBubble({ role, content, isStre
               }}
             >
               {options.length > 0
-                ? content.replace(/(?:[-*▸►•]|\d+[).]?)\s*\*\*(?:Option\s+)?[A-Z0-9]+[):.]?(?:\*\*[:\s]+.+|[:\s]+.+?\*\*\.?\s*.*)/gi, '').replace(/\n{3,}/g, '\n\n').trim()
+                ? content.replace(/(?:[-*▸►•]|\d+[).]?)\s*\*\*(?:Option\s+)?[A-Z][):.]?(?:\*\*[:\s]+.+|[:\s]+.+?\*\*\.?\s*.*)/gi, '').replace(/\n{3,}/g, '\n\n').trim()
                 : content}
             </ReactMarkdown>
             {isStreaming && (
