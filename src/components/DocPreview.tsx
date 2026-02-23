@@ -11,6 +11,46 @@ import { ExportBar } from "./ExportBar";
 import { VerifierPanel, VerifierState } from "./VerifierPanel";
 import dynamic from "next/dynamic";
 
+/**
+ * Preprocess AI-generated markdown before ReactMarkdown parses it.
+ * Fixes two common issues:
+ * 1) 4+ space indent turns into unwanted code blocks — strip to normal text
+ * 2) Headings (# to ####) need a preceding blank line to be parsed correctly
+ */
+function normalizeMarkdown(raw: string): string {
+  const lines = raw.split("\n");
+  const out: string[] = [];
+  let inFence = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Track fenced code blocks — don't touch content inside them
+    if (/^```/.test(line.trimStart()) || /^~~~(?!doc:)/.test(line.trimStart())) {
+      inFence = !inFence;
+      out.push(line);
+      continue;
+    }
+
+    if (inFence) {
+      out.push(line);
+      continue;
+    }
+
+    // Strip 4+ space indent that would create unwanted code blocks
+    const stripped = line.replace(/^ {4,}/, "");
+
+    // Ensure blank line before headings
+    if (/^#{1,4}\s/.test(stripped) && i > 0 && out.length > 0 && out[out.length - 1].trim() !== "") {
+      out.push("");
+    }
+
+    out.push(stripped);
+  }
+
+  return out.join("\n");
+}
+
 // Lazy-load DiffViewer — it bundles a syntax highlighter and is only shown
 // when the user toggles diff mode, so keep it out of the initial bundle.
 const DiffViewer = dynamic(() => import("./DiffViewer").then((m) => m.DiffViewer), {
@@ -381,7 +421,7 @@ export function DocPreview({
                   rehypePlugins={[rehypeHighlight]}
                   components={markdownComponents}
                 >
-                  {currentContent}
+                  {normalizeMarkdown(currentContent)}
                 </ReactMarkdown>
               </div>
             </motion.div>

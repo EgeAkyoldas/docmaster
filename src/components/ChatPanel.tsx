@@ -185,15 +185,32 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
     const imageInputRef = useRef<HTMLInputElement>(null);
     const abortRef = useRef<AbortController | null>(null);
 
-    // Parse coverage from AI messages or live streaming content: "✅ X/Y topics covered"
+    // Parse coverage from AI messages or live streaming content
+    // Strategy 1: "✅ X/Y topics covered" summary line
+    // Strategy 2: Count [x] checkboxes vs total checkboxes in message
+    const autoGenTriggered = useRef(false);
     useEffect(() => {
       if (!guidedSession) return;
       // Check streaming content first (real-time), then fall back to committed messages
       const textToCheck = streamingContent ||
         ([...messages].reverse().find((m) => m.role === "assistant")?.content ?? "");
-      const match = textToCheck.match(/✅\s*(\d+)\/(\d+)\s*topics? covered/i);
-      if (match) {
-        const answered = parseInt(match[1], 10);
+
+      let answered = 0;
+
+      // Strategy 1: explicit "✅ X/Y topics covered"
+      const summaryMatch = textToCheck.match(/✅\s*(\d+)\/(\d+)\s*topics? covered/i);
+      if (summaryMatch) {
+        answered = parseInt(summaryMatch[1], 10);
+      } else {
+        // Strategy 2: count [x] vs [ ] checkboxes
+        const checked = (textToCheck.match(/\[x\]/gi) || []).length;
+        const unchecked = (textToCheck.match(/\[ \]/g) || []).length;
+        if (checked + unchecked > 0) {
+          answered = checked;
+        }
+      }
+
+      if (answered > 0) {
         setGuidedSession((prev) => prev ? { ...prev, answeredCount: answered } : null);
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
