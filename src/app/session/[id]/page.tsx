@@ -49,6 +49,7 @@ export default function SessionPage() {
         s.documentHistory = [];
       }
       setSession(s);
+      document.title = `${s.name} — DocMaster`;
       const docKeys = Object.keys(s.documents);
       if (docKeys.length > 0) setActiveDoc(docKeys[0]);
     });

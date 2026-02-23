@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PRD Creator — AI Document Factory",
+  title: {
+    default: "DocMaster — AI Document Factory",
+    template: "%s — DocMaster",
+  },
   description:
     "Create professional PRDs, design docs, tech specs, and architecture documents through AI-powered conversations.",
   keywords: ["PRD", "product requirements", "design document", "AI", "documentation"],
