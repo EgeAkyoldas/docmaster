@@ -5,11 +5,13 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
   forwardRef,
   useImperativeHandle,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Square, ChevronDown, ChevronUp, Plus, Zap, MessageSquare } from "lucide-react";
+import { Send, Square, ChevronDown, ChevronUp, Plus, Zap, MessageSquare, Image as ImageIcon, X, Loader2 } from "lucide-react";
+import { ImageModal, ImageModalData } from "./ImageModal";
 import { GuidedProgress, GuidedSession } from "./GuidedProgress";
 import {
   MessageBubble,
@@ -62,9 +64,10 @@ const GUIDED_TOPICS: Record<string, string[]> = Object.fromEntries(
 function buildGuidedPrompt(
   docLabel: string,
   docKey: string,
-  existingDocs: Record<string, string>
+  existingDocs: Record<string, string>,
+  typeTopicOverrides?: Record<string, string[]>
 ): string {
-  const topics = GUIDED_TOPICS[docKey] ?? [];
+  const topics = typeTopicOverrides?.[docKey] ?? GUIDED_TOPICS[docKey] ?? [];
   const topicChecklist = topics.map((t) => `- [ ] ${t}`).join("\n");
   const otherDocs = Object.keys(existingDocs).filter((k) => k !== docKey);
   const contextNote =
@@ -102,10 +105,11 @@ export interface ChatPanelHandle {
 
 interface ChatPanelProps {
   messages: ChatMessage[];
-  instructionKey: string;
   isStreaming: boolean;
   existingDocs: Record<string, string>;
+  enabledDocs?: string[];
   customInstructions?: Record<string, string>;
+  guidedTopicOverrides?: Record<string, string[]>;
   verifyReport?: string | null;
   onMessagesUpdate: (messages: ChatMessage[]) => void;
   onDocumentsUpdate: (docs: Record<string, string>) => void;
@@ -124,10 +128,11 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
   function ChatPanel(
     {
       messages,
-      instructionKey,
       isStreaming,
       existingDocs,
+      enabledDocs,
       customInstructions,
+      guidedTopicOverrides,
       verifyReport,
       onMessagesUpdate,
       onDocumentsUpdate,
@@ -141,11 +146,15 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
     const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
     const [guidedSession, setGuidedSession] = useState<GuidedSession | null>(null);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    // Image generation controls
+    const [imagePromptMode, setImagePromptMode] = useState(false);
+    const [imagePromptInput, setImagePromptInput] = useState("");
+    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+    const [imageModalData, setImageModalData] = useState<ImageModalData | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
     const abortRef = useRef<AbortController | null>(null);
-
-    void instructionKey;
 
     // Parse coverage from AI messages: "✅ X/Y topics covered"
     useEffect(() => {
@@ -168,9 +177,17 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
       },
     }));
 
+    // Scroll on final message commit — smooth feels right here
     useEffect(() => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, streamingContent, pendingImages]);
+    }, [messages, pendingImages]);
+
+    // Scroll during streaming — use instant to avoid queuing up scroll animations
+    // that fight each other when RAF flushes 60fps state updates
+    useEffect(() => {
+      if (!streamingContent) return;
+      bottomRef.current?.scrollIntoView({ behavior: "instant" as ScrollBehavior });
+    }, [streamingContent]);
 
     const adjustTextareaHeight = () => {
       const ta = textareaRef.current;
@@ -213,6 +230,26 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
       }
     }, []);
 
+    // User-initiated manual image generation
+    const handleGenerateImageManual = useCallback(async () => {
+      const trimmed = imagePromptInput.trim();
+      if (!trimmed || isGeneratingImage) return;
+      setIsGeneratingImage(true);
+      setImagePromptMode(false);
+      setImagePromptInput("");
+      const initial: PendingImage = { prompt: trimmed, status: "loading" };
+      setPendingImages((prev) => [...prev, initial]);
+      const result = await generateImage(trimmed);
+      setPendingImages((prev) =>
+        prev.map((p) => (p.prompt === trimmed && p.status === "loading" ? result : p))
+      );
+      setIsGeneratingImage(false);
+      // Auto-open modal if successful
+      if (result.status === "done" && result.image) {
+        setImageModalData(result.image);
+      }
+    }, [imagePromptInput, isGeneratingImage, generateImage]);
+
     const sendMessage = useCallback(
       async (messageText: string) => {
         const trimmed = messageText.trim();
@@ -246,6 +283,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
               history: messages.map((m) => ({ role: m.role, content: m.content })),
               existingDocs,
               verifyReport: verifyReport || undefined,
+              customInstructions: customInstructions ?? {},
             }),
             signal: controller.signal,
           });
@@ -255,6 +293,8 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
           const reader = response.body?.getReader();
           const decoder = new TextDecoder();
           let fullText = "";
+          // Track whether a RAF is scheduled to batch streaming state updates
+          let rafId: number | null = null;
 
           if (reader) {
             while (true) {
@@ -269,12 +309,21 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
                     const parsed = JSON.parse(data);
                     if (parsed.text) {
                       fullText += parsed.text;
-                      setStreamingContent(fullText);
+                      // Batch UI updates to 60fps — don't call setState on every token
+                      if (rafId === null) {
+                        rafId = requestAnimationFrame(() => {
+                          setStreamingContent(fullText);
+                          rafId = null;
+                        });
+                      }
                     }
                   } catch { /* ignore */ }
                 }
               }
             }
+            // Flush any pending RAF after stream ends
+            if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+            setStreamingContent(fullText); // Final snapshot
           }
 
           // Parse documents and image markers from full response
@@ -331,12 +380,12 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
 
     const handleDocGuided = useCallback(
       (action: DocDefinition) => {
-        const topics = GUIDED_TOPICS[action.docKey] ?? [];
-        setGuidedSession({ docType: action.docKey, totalTopics: topics.length, answeredCount: 0 });
+        const topics = guidedTopicOverrides?.[action.docKey] ?? GUIDED_TOPICS[action.docKey] ?? [];
+        setGuidedSession({ docType: action.docKey, totalTopics: topics.length, answeredCount: 0, topics });
         setOpenDropdown(null);
-        sendMessage(buildGuidedPrompt(action.label, action.docKey, existingDocs));
+        sendMessage(buildGuidedPrompt(action.label, action.docKey, existingDocs, guidedTopicOverrides));
       },
-      [sendMessage, existingDocs]
+      [sendMessage, existingDocs, guidedTopicOverrides]
     );
 
     const handleGuidedGenerate = useCallback(() => {
@@ -352,7 +401,9 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
     const docCount = Object.keys(existingDocs).length;
 
     return (
-      <div className="flex flex-col h-full">
+      <>
+        <div className="flex flex-col h-full">
+
         {/* Guided Progress Bar */}
         {guidedSession && (
           <GuidedProgress
@@ -363,7 +414,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
         )}
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages">
           <AnimatePresence>
             {messages.length === 0 && !isStreaming && (
               <motion.div
@@ -385,8 +436,30 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
             )}
           </AnimatePresence>
 
-          {messages.map((msg) => (
-            <MessageBubble key={msg.id} role={msg.role} content={msg.content} />
+          {/* Windowed rendering: collapse messages older than last 50 */}
+          {messages.length > 50 && (
+            <div className="text-center py-2">
+              <button
+                onClick={() => {
+                  const el = document.getElementById("chat-messages");
+                  const firstVisible = el?.querySelector(".msg-bubble");
+                  firstVisible?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="text-[10px] font-mono text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              >
+                ↑ {messages.length - 50} older messages (scroll up to load)
+              </button>
+            </div>
+          )}
+
+          {messages.slice(-50).map((msg) => (
+            <div key={msg.id} className="msg-bubble">
+              <MessageBubble
+                role={msg.role}
+                content={msg.content}
+                onImageClick={setImageModalData}
+              />
+            </div>
           ))}
 
           {isStreaming && streamingContent && (
@@ -408,6 +481,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
                 role="assistant"
                 content=""
                 inlineImages={[pi.image]}
+                onImageClick={setImageModalData}
               />
             ) : (
               <ImageErrorBubble key={i} prompt={pi.prompt} fallbackText={pi.fallbackText} />
@@ -419,11 +493,16 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
 
         {/* Document Quick-Action Toolbar */}
         <div className="flex-shrink-0 border-t border-border relative">
-          <button
-            onClick={() => setToolbarOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-white/[0.02] transition-colors font-mono"
-          >
-            <span className="flex items-center gap-2">
+          {/* Toolbar header row — using div to avoid button-in-button HTML violation */}
+          <div className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-mono">
+            {/* Left half — clickable to toggle doc list */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setToolbarOpen((v) => !v)}
+              onKeyDown={(e) => e.key === "Enter" && setToolbarOpen((v) => !v)}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex-1 py-0.5"
+            >
               <Plus className="w-3.5 h-3.5" />
               <span className="font-semibold tracking-wide">Generate Document</span>
               {docCount > 0 && (
@@ -431,9 +510,39 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
                   {docCount} created
                 </span>
               )}
-            </span>
-            {toolbarOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
-          </button>
+            </div>
+            {/* Right side — Generate Visual button + chevron */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setImagePromptMode((v) => !v);
+                  setTimeout(() => imageInputRef.current?.focus(), 80);
+                }}
+                disabled={isStreaming || isGeneratingImage}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-medium transition-all duration-200 disabled:opacity-40",
+                  imagePromptMode
+                    ? "bg-violet-500/20 text-violet-300 border-violet-500/40"
+                    : "bg-violet-500/10 text-violet-400 border-violet-500/20 hover:bg-violet-500/20"
+                )}
+                title="Generate a visual / diagram from a description"
+              >
+                {isGeneratingImage
+                  ? <Loader2 className="w-3 h-3 animate-spin" />
+                  : <ImageIcon className="w-3 h-3" />}
+                {isGeneratingImage ? "Generating..." : "Generate Visual"}
+              </button>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setToolbarOpen((v) => !v)}
+                onKeyDown={(e) => e.key === "Enter" && setToolbarOpen((v) => !v)}
+                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer p-0.5"
+              >
+                {toolbarOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+              </div>
+            </div>
+          </div>
 
           <AnimatePresence>
             {toolbarOpen && (
@@ -444,7 +553,9 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
                 transition={{ duration: 0.15 }}
               >
                 <div className="px-4 pb-3 flex flex-wrap gap-2">
-                  {DEFAULT_DOC_DEFINITIONS.map((action) => {
+                  {DEFAULT_DOC_DEFINITIONS
+                    .filter((action) => !enabledDocs || enabledDocs.includes(action.docKey))
+                    .map((action) => {
                     const isCreated = action.docKey in existingDocs;
                     const hasGuided = action.docKey in GUIDED_TOPICS;
                     const isDropdownOpen = openDropdown === action.label;
@@ -520,6 +631,48 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Inline image-prompt input — shown when user clicks Generate Visual */}
+          <AnimatePresence>
+            {imagePromptMode && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-3 flex items-center gap-2 border-t border-violet-500/10 pt-2">
+                  <ImageIcon className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+                  <input
+                    ref={imageInputRef}
+                    type="text"
+                    value={imagePromptInput}
+                    onChange={(e) => setImagePromptInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleGenerateImageManual();
+                      if (e.key === "Escape") { setImagePromptMode(false); setImagePromptInput(""); }
+                    }}
+                    placeholder={'Describe what to generate (e.g. "System architecture diagram with microservices")'}
+                    className="flex-1 bg-violet-500/5 border border-violet-500/20 rounded-lg px-3 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground outline-none focus:border-violet-500/50 transition-colors"
+                  />
+                  <button
+                    onClick={handleGenerateImageManual}
+                    disabled={!imagePromptInput.trim() || isGeneratingImage}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-violet-500/20 text-violet-300 border border-violet-500/30 hover:bg-violet-500/30 text-xs font-mono font-medium transition-colors disabled:opacity-40"
+                  >
+                    Generate
+                  </button>
+                  <button
+                    onClick={() => { setImagePromptMode(false); setImagePromptInput(""); }}
+                    className="flex-shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Input */}
@@ -570,7 +723,11 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
             Press Enter to send · Shift+Enter for new line
           </p>
         </div>
-      </div>
+        </div>
+
+        {/* Fullscreen image modal */}
+        <ImageModal image={imageModalData} onClose={() => setImageModalData(null)} />
+      </>
     );
   }
 );

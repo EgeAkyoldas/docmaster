@@ -12,12 +12,16 @@ import {
   getSession,
   saveSession,
   debouncedSaveSession,
+  debouncedSaveDocuments,
   flushPendingSave,
   Session,
   ChatMessage,
   DocVersion,
 } from "@/lib/storage";
 import { DOCUMENT_LABELS } from "@/lib/constants";
+import { DEFAULT_DOC_DEFINITIONS, PROJECT_TYPE_PRESETS } from "@/lib/doc-definitions";
+
+const DEFAULT_ALL_DOCS = DEFAULT_DOC_DEFINITIONS.map((d) => d.docKey);
 
 export default function SessionPage() {
   const params = useParams();
@@ -79,7 +83,9 @@ export default function SessionPage() {
           mergedDocs[type] = content;
         }
         const updated = { ...prev, documents: mergedDocs, updatedAt: Date.now() };
-        void saveSession(updated);
+        // Use the fast doc channel — 150ms debounce keeps IndexedDB writes
+        // separate from chat streaming saves
+        debouncedSaveDocuments(updated);
         return updated;
       });
       const newDocType = Object.keys(newDocs)[0];
@@ -105,24 +111,28 @@ export default function SessionPage() {
   );
 
   // Snapshot current doc versions before AI changes
+  const MAX_VERSIONS_PER_DOC = 3;
   const handleSnapshotVersions = useCallback(
     (docs: Record<string, string>, source: DocVersion["source"]) => {
       setSession((prev) => {
         if (!prev) return prev;
         const now = Date.now();
         const newVersions: DocVersion[] = Object.entries(docs).map(
-          ([docType, content]) => ({
-            docType,
-            content,
-            timestamp: now,
-            source,
-          })
+          ([docType, content]) => ({ docType, content, timestamp: now, source })
         );
-        const updated = {
-          ...prev,
-          documentHistory: [...(prev.documentHistory || []), ...newVersions],
-          updatedAt: now,
-        };
+        // Trim in-memory immediately (don't wait for save-time trim)
+        const allHistory = [...(prev.documentHistory || []), ...newVersions];
+        const byDocType: Record<string, DocVersion[]> = {};
+        for (const v of allHistory) {
+          (byDocType[v.docType] ??= []).push(v);
+        }
+        const kept: DocVersion[] = [];
+        for (const versions of Object.values(byDocType)) {
+          versions.sort((a, b) => b.timestamp - a.timestamp);
+          kept.push(...versions.slice(0, MAX_VERSIONS_PER_DOC));
+        }
+        const documentHistory = kept.sort((a, b) => a.timestamp - b.timestamp);
+        const updated = { ...prev, documentHistory, updatedAt: now };
         void saveSession(updated);
         return updated;
       });
@@ -150,7 +160,20 @@ export default function SessionPage() {
     []
   );
 
-  // Drag-to-resize
+  const handleEnabledDocsUpdate = useCallback(
+    (enabledDocs: string[]) => {
+      setSession((prev) => {
+        if (!prev) return prev;
+        const updated = { ...prev, enabledDocs, updatedAt: Date.now() };
+        void saveSession(updated);
+        return updated;
+      });
+    },
+    []
+  );
+
+  // Drag-to-resize — throttled to 60fps via requestAnimationFrame
+  const rafDragRef = useRef<number | null>(null);
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -159,10 +182,20 @@ export default function SessionPage() {
   useEffect(() => {
     if (!isDragging) return;
     const handleMouseMove = (e: MouseEvent) => {
-      const pct = (e.clientX / window.innerWidth) * 100;
-      setPanelWidth(Math.max(25, Math.min(70, pct)));
+      if (rafDragRef.current !== null) return; // already scheduled
+      rafDragRef.current = requestAnimationFrame(() => {
+        const pct = (e.clientX / window.innerWidth) * 100;
+        setPanelWidth(Math.max(25, Math.min(70, pct)));
+        rafDragRef.current = null;
+      });
     };
-    const handleMouseUp = () => setIsDragging(false);
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      if (rafDragRef.current !== null) {
+        cancelAnimationFrame(rafDragRef.current);
+        rafDragRef.current = null;
+      }
+    };
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     return () => {
@@ -240,10 +273,11 @@ export default function SessionPage() {
           <ChatPanel
             ref={chatPanelRef}
             messages={session.messages}
-            instructionKey={session.instructionKey}
             isStreaming={isStreaming}
             existingDocs={session.documents}
+            enabledDocs={session.enabledDocs}
             customInstructions={session.customInstructions}
+            guidedTopicOverrides={PROJECT_TYPE_PRESETS.find((p) => p.id === session.projectType)?.guidedTopicOverrides}
             verifyReport={verifierState.rawReport || null}
             onMessagesUpdate={handleMessagesUpdate}
             onDocumentsUpdate={handleDocumentsUpdate}
@@ -270,6 +304,7 @@ export default function SessionPage() {
             onDocumentEdit={handleDocumentEdit}
             onAskAboutSection={handleAskAboutSection}
             onDocumentsUpdate={handleDocumentsUpdate}
+            enabledDocs={session.enabledDocs}
             onSnapshotVersions={handleSnapshotVersions}
             onReportReady={handleReportReady}
             verifierState={verifierState}
@@ -282,9 +317,12 @@ export default function SessionPage() {
       {/* Session Settings */}
       <SessionSettings
         open={settingsOpen}
+        enabledDocs={session.enabledDocs ?? DEFAULT_ALL_DOCS}
         customInstructions={session.customInstructions ?? {}}
+        typeDefaultInstructions={PROJECT_TYPE_PRESETS.find((p) => p.id === session.projectType)?.instructionOverrides ?? {}}
         onClose={() => setSettingsOpen(false)}
         onUpdate={handleCustomInstructionsUpdate}
+        onEnabledDocsUpdate={handleEnabledDocsUpdate}
       />
     </div>
   );

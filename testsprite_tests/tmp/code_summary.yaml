@@ -1,0 +1,171 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - Next.js 15 (App Router)
+  - Tailwind CSS
+  - Radix UI
+  - Framer Motion
+  - React 19
+  - IndexedDB (idb)
+  - Gemini AI (@google/genai)
+routes:
+  - path: /
+    file: src/app/page.tsx
+    auth_required: false
+    description: Dashboard listing all project sessions with create/delete functionality
+  - path: /session/[id]
+    file: src/app/session/[id]/page.tsx
+    auth_required: false
+    description: Main workspace with chat panel, document preview, verifier, and settings
+features:
+  - name: Create Project Session
+    description: Create a new project session by entering a name and selecting a project type
+    files:
+      - src/app/page.tsx
+      - src/lib/storage.ts
+      - src/lib/doc-definitions.ts
+    entry_route: /
+    user_interactions:
+      - Click "New Project" button
+      - Enter project name in modal input
+      - Select project type from list (Web/Mobile, Game, Business, Design System, Marketing, Infrastructure, Custom)
+      - Session is created and user is redirected to /session/[id]
+    api_calls: []
+    auth_required: false
+  - name: Delete Project Session
+    description: Delete an existing project session from the dashboard
+    files:
+      - src/app/page.tsx
+      - src/components/SessionCard.tsx
+      - src/lib/storage.ts
+    entry_route: /
+    user_interactions:
+      - Hover over a session card to reveal delete button
+      - Click delete button
+      - Session is removed from the list
+    api_calls: []
+    auth_required: false
+  - name: AI Chat Document Generation
+    description: Chat with AI to generate project documents in auto or guided mode
+    files:
+      - src/components/ChatPanel.tsx
+      - src/components/MessageBubble.tsx
+      - src/components/GuidedProgress.tsx
+      - src/app/api/chat/route.ts
+      - src/lib/gemini.ts
+      - src/lib/instructions.ts
+    entry_route: /session/[id]
+    user_interactions:
+      - Type a message in the chat input
+      - Press Enter or click send button
+      - Click document type buttons in the toolbar to generate specific documents
+      - Toggle between Auto and Guided generation modes
+      - View streaming AI responses in real-time
+      - See guided progress bar during guided sessions
+    api_calls:
+      - method: POST
+        endpoint: /api/chat
+    auth_required: false
+  - name: Document Preview and Editing
+    description: View, edit, and manage generated documents with markdown rendering
+    files:
+      - src/components/DocPreview.tsx
+      - src/lib/utils.ts
+      - src/lib/storage.ts
+    entry_route: /session/[id]
+    user_interactions:
+      - Click document tabs to switch between documents
+      - Read rendered markdown content with syntax highlighting
+      - Click edit button to enter inline edit mode
+      - Modify document content in textarea
+      - Click save or cancel to finish editing
+      - Click section headings "Ask AI" button to request changes
+      - Click on images to open fullscreen lightbox
+      - Toggle task list checkboxes
+    api_calls: []
+    auth_required: false
+  - name: Document Version History and Diff
+    description: View document version history with diff comparison
+    files:
+      - src/components/DocPreview.tsx
+    entry_route: /session/[id]
+    user_interactions:
+      - Click history/diff toggle button
+      - View previous document versions
+      - Compare versions side by side with diff viewer
+    api_calls: []
+    auth_required: false
+  - name: Document Export
+    description: Export individual documents or all documents as ZIP
+    files:
+      - src/components/DocPreview.tsx
+    entry_route: /session/[id]
+    user_interactions:
+      - Click export button on a single document
+      - Click export all button to download ZIP archive
+    api_calls: []
+    auth_required: false
+  - name: Document Verifier
+    description: Cybernetic verifier that analyzes documents for consistency issues and applies fixes
+    files:
+      - src/components/VerifierPanel.tsx
+      - src/app/api/verify/route.ts
+      - src/lib/patchUtils.ts
+    entry_route: /session/[id]
+    user_interactions:
+      - Toggle verifier panel open
+      - Click start verification button
+      - View animated verification progress
+      - Browse issues sorted by severity (critical, warning, info)
+      - Expand issue cards to see evidence details
+      - Click apply fix on individual issues
+      - Click apply all fixes button
+      - Dismiss individual issues
+      - Navigate to affected documents from issues
+    api_calls:
+      - method: POST
+        endpoint: /api/verify
+    auth_required: false
+  - name: Image Generation
+    description: Generate technical diagrams and visualizations via AI
+    files:
+      - src/components/ChatPanel.tsx
+      - src/components/ImageModal.tsx
+      - src/app/api/generate-image/route.ts
+    entry_route: /session/[id]
+    user_interactions:
+      - Enter image description in prompt input
+      - Click generate image button
+      - View generated image inline in chat
+      - Click image to open fullscreen modal
+    api_calls:
+      - method: POST
+        endpoint: /api/generate-image
+    auth_required: false
+  - name: Session Settings
+    description: Configure enabled documents and custom instructions per session
+    files:
+      - src/components/SessionSettings.tsx
+      - src/lib/doc-definitions.ts
+    entry_route: /session/[id]
+    user_interactions:
+      - Open settings panel
+      - Toggle document types on/off
+      - Edit custom instructions per document type
+      - Click reset to defaults button
+    api_calls: []
+    auth_required: false
+known_limitations:
+  - issue: No API key validation UI - fails silently if GEMINI_API_KEY is missing
+    location: src/lib/gemini.ts
+    impact: Users see no error feedback when API key is not configured
+  - issue: IndexedDB required with no fallback
+    location: src/lib/storage.ts
+    impact: App will not work in browsers without IndexedDB support
+  - issue: Verifier requires at least 2 documents to function
+    location: src/components/VerifierPanel.tsx
+    impact: Cannot verify single-document sessions
+  - issue: Image generation has no retry mechanism
+    location: src/app/api/generate-image/route.ts
+    impact: Failed image generations require manual retry

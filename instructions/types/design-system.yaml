@@ -1,0 +1,54 @@
+id: design-system
+label: "Design System"
+icon: Palette
+description: "Component library, design tokens, and visual language documentation"
+enabledDocs:
+  - PRD
+  - Design Document
+  - UI Design
+  - Tech Stack
+  - Vibe Prompt
+
+instructions:
+  PRD: >
+    generate a complete Product Requirements Document (PRD) for this design system.
+    Focus on the design system's purpose and adoption goals, target consumers
+    (product teams, number of products/platforms), design principles and philosophy,
+    component coverage scope (atomic → molecular → organism hierarchy),
+    accessibility standards (WCAG 2.1 AA/AAA), multi-brand/theme support requirements,
+    versioning and deprecation policy, contribution model (centralized vs federated),
+    and success metrics (adoption rate, component reuse ratio, design-dev consistency).
+  Design Document: >
+    generate a complete Design Document for this design system.
+    Cover the design token architecture (color, spacing, typography, elevation, motion),
+    token naming conventions (semantic vs primitive), multi-theme strategy (light/dark/brand variants),
+    component API design philosophy (controlled vs uncontrolled, composition patterns),
+    variant and state matrix for core components,
+    responsive behavior patterns, icon system design,
+    illustration/imagery guidelines, and design-to-code handoff workflow.
+  UI Design: >
+    generate a complete UI/UX Design Specification for this design system.
+    Define the visual language: color palette with semantic mapping (primary, secondary, success, danger, warning, info),
+    typography scale with line-height and letter-spacing rules,
+    spacing system (4px/8px grid), elevation/shadow levels,
+    border radius tokens, motion/animation principles (easing curves, duration scale),
+    breakpoint system. Then document each component: Button, Input, Select, Checkbox, Radio,
+    Toggle, Card, Modal, Toast, Tooltip, Tabs, Accordion, Table, Navigation,
+    Avatar, Badge, Breadcrumb — with all states (default, hover, focus, active, disabled, error, loading).
+  Tech Stack: >
+    generate a complete Tech Stack Specification for this design system.
+    Evaluate component framework (React/Vue/Web Components/multi-framework),
+    styling approach (CSS-in-JS/CSS Modules/Tailwind/vanilla CSS),
+    build tools (Vite/Rollup/tsup), documentation platform (Storybook/Docusaurus),
+    token management tool (Style Dictionary/Figma Tokens), testing framework
+    (Vitest + Testing Library + Chromatic), package registry (npm/private),
+    versioning strategy (semantic, independent vs fixed), CI/CD for publishing,
+    and Figma plugin/sync tooling.
+  Vibe Prompt: >
+    generate a comprehensive Vibe Ready Prompt for this design system —
+    a master AI handoff document synthesizing ALL design system documents.
+    Include design system identity (name, principles, design philosophy),
+    complete token reference (colors, spacing, typography, elevation),
+    component catalog with API signatures, theming architecture,
+    usage patterns and anti-patterns, contribution guidelines,
+    and file structure for the component library repo.

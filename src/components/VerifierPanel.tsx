@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, memo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldCheck,
@@ -21,6 +21,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { parseDocumentBlocks } from "@/lib/utils";
+import { extractSection, applyPatch, buildHints } from "@/lib/patchUtils";
 
 // ── Types ──
 export interface VerifierIssue {
@@ -33,6 +34,8 @@ export interface VerifierIssue {
   evidence: { doc: string; quote: string }[];
   fix: string;
   targetDoc: string;
+  /** Populated after a fix attempt + post-validate re-verify */
+  patchStatus?: "patching" | "fallback" | "resolved" | "unresolved" | "error";
 }
 
 export type VerifierPhase = "idle" | "verifying" | "ready" | "harmonizing" | "done";
@@ -57,6 +60,7 @@ export const INITIAL_VERIFIER_STATE: VerifierState = {
 
 interface VerifierPanelProps {
   documents: Record<string, string>;
+  enabledDocs?: string[];
   verifierState: VerifierState;
   onVerifierStateChange: (state: VerifierState) => void;
   onDocumentsUpdate: (docs: Record<string, string>) => void;
@@ -103,13 +107,33 @@ function severityBadge(severity: string) {
 }
 
 function parseIssuesFromResponse(text: string): VerifierIssue[] {
-  const match = text.match(/~~~issues\s*\n([\s\S]*?)~~~/);
-  if (!match) return [];
-  try {
-    return JSON.parse(match[1]);
-  } catch {
-    return [];
+  // Try the well-formed block first (with closing ~~~)
+  const full = text.match(/~~~issues\s*\n([\s\S]*?)~~~/);
+  if (full) {
+    try { return JSON.parse(full[1]); } catch { /* fallthrough */ }
   }
+
+  // Fallback: response may be truncated — grab everything after ~~~issues
+  const partial = text.match(/~~~issues\s*\n([\s\S]*)/);
+  if (partial) {
+    const fragment = partial[1].replace(/~~~.*$/, "").trim();
+    // Try parsing as-is (might be complete but missing closing marker)
+    try { return JSON.parse(fragment); } catch { /* fallthrough */ }
+    // Try closing the truncated array and parsing
+    try { return JSON.parse(fragment + "]"); } catch { /* fallthrough */ }
+    // Last resort: extract individual complete objects
+    const objects: VerifierIssue[] = [];
+    const objRegex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+    for (const m of fragment.matchAll(objRegex)) {
+      try {
+        const obj = JSON.parse(m[0]);
+        if (obj.id && obj.severity) objects.push(obj as VerifierIssue);
+      } catch { /* skip malformed */ }
+    }
+    if (objects.length > 0) return objects;
+  }
+
+  return [];
 }
 
 function parseSummaryFromResponse(text: string): string {
@@ -117,8 +141,8 @@ function parseSummaryFromResponse(text: string): string {
   return match ? match[1].trim() : "";
 }
 
-// ── Issue Card ──
-function IssueCard({
+// ── Issue Card — memoized so only re-renders when its own props change ──
+const IssueCard = memo(function IssueCard({
   issue,
   onNavigateToDoc,
   onApply,
@@ -250,6 +274,37 @@ function IssueCard({
                 </p>
               </div>
 
+              {/* Patch status badge — shown after fix applied */}
+              {isApplied && issue.patchStatus && (
+                <div className="flex items-center gap-1.5 pt-1">
+                  {issue.patchStatus === "patching" && (
+                    <span className="flex items-center gap-1 text-[10px] font-mono text-cyan-400 animate-pulse">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Validating...
+                    </span>
+                  )}
+                  {issue.patchStatus === "resolved" && (
+                    <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                      <CheckCircle2 className="w-3 h-3" /> Resolved
+                    </span>
+                  )}
+                  {issue.patchStatus === "unresolved" && (
+                    <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
+                      <AlertTriangle className="w-3 h-3" /> Unresolved — retry
+                    </span>
+                  )}
+                  {issue.patchStatus === "fallback" && (
+                    <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      <RotateCcw className="w-3 h-3" /> Fallback mode
+                    </span>
+                  )}
+                  {issue.patchStatus === "error" && (
+                    <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                      <X className="w-3 h-3" /> Fix failed
+                    </span>
+                  )}
+                </div>
+              )}
+
               {/* Actions */}
               {!isApplied && (
                 <div className="flex items-center gap-2 pt-1">
@@ -286,11 +341,12 @@ function IssueCard({
       </AnimatePresence>
     </motion.div>
   );
-}
+});
 
 // ── Main Panel ──
 export function VerifierPanel({
   documents,
+  enabledDocs,
   verifierState,
   onVerifierStateChange,
   onDocumentsUpdate,
@@ -310,10 +366,14 @@ export function VerifierPanel({
 
   const docCount = Object.keys(documents).length;
 
-  // Helper to update parent state
-  const updateState = (patch: Partial<VerifierState>) => {
-    onVerifierStateChange({ ...verifierState, ...patch });
-  };
+  // Keep a ref to always-current state to avoid stale closures in callbacks
+  const verifierStateRef = useRef(verifierState);
+  verifierStateRef.current = verifierState;
+
+  // Helper to update parent state — reads from ref to avoid stale closure
+  const updateState = useCallback((patch: Partial<VerifierState>) => {
+    onVerifierStateChange({ ...verifierStateRef.current, ...patch });
+  }, [onVerifierStateChange]);
 
   // ── VERIFY ──
   const runVerify = useCallback(async () => {
@@ -328,7 +388,7 @@ export function VerifierPanel({
       const res = await fetch("/api/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documents, mode: "verify" }),
+        body: JSON.stringify({ documents, mode: "verify", enabledDocs }),
         signal: controller.signal,
       });
 
@@ -377,66 +437,170 @@ export function VerifierPanel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documents, docCount]);
 
-  // ── APPLY SINGLE FIX ──
-  const applySingleFix = useCallback(
-    async (issue: VerifierIssue) => {
-      setApplyingId(issue.id);
-      try {
-        // Snapshot before change
-        onSnapshotVersions(documents, "harmonized");
+  // ── STREAM HELPER ──
+  const streamFull = async (res: Response): Promise<string> => {
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let full = "";
+    if (!reader) return full;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (const line of decoder.decode(value, { stream: true }).split("\n")) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6);
+        if (data === "[DONE]") break;
+        try { const p = JSON.parse(data); if (p.text) full += p.text; } catch { /* ignore */ }
+      }
+    }
+    return full;
+  };
 
+  // ── POST-VALIDATE: re-verify and check if an issue was resolved ──
+  const postValidate = useCallback(
+    async (issueId: string, updatedDocs: Record<string, string>) => {
+      await new Promise((r) => setTimeout(r, 300)); // brief pause for state to settle
+      try {
         const res = await fetch("/api/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            documents,
-            mode: "harmonize",
-            report: `Fix the following issue:\n\nID: ${issue.id}\nTitle: ${issue.title}\nTarget Document: ${issue.targetDoc}\nFix: ${issue.fix}\nDescription: ${issue.description}`,
-          }),
+          body: JSON.stringify({ documents: updatedDocs, mode: "verify", enabledDocs }),
         });
+        if (!res.ok) return;
+        const raw = await streamFull(res);
+        const newIssues = parseIssuesFromResponse(raw);
+        const stillPresent = newIssues.some((i) => i.id === issueId);
+        // Update patchStatus in issues list
+        updateState({
+          issues: verifierStateRef.current.issues.map((i) =>
+            i.id === issueId
+              ? { ...i, patchStatus: stillPresent ? "unresolved" : "resolved" }
+              : i
+          ),
+        });
+      } catch { /* post-validate is best-effort */ }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [enabledDocs]
+  );
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  // ── APPLY SINGLE FIX (surgical → fallback) ──
+  const applySingleFix = useCallback(
+    async (issue: VerifierIssue) => {
+      setApplyingId(issue.id);
+      onSnapshotVersions(documents, "harmonized");
 
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
-        let full = "";
+      let finalDocs: Record<string, string> = { ...documents };
+      let applied = false;
+      let usedFallback = false;
 
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            for (const line of chunk.split("\n")) {
-              if (line.startsWith("data: ")) {
-                const data = line.slice(6);
-                if (data === "[DONE]") break;
-                try {
-                  const parsed = JSON.parse(data);
-                  if (parsed.text) full += parsed.text;
-                } catch {
-                  /* ignore */
-                }
+      try {
+        const targetContent = (documents as Record<string, string>)[issue.targetDoc];
+
+        // ── PATH A: SURGICAL ──
+        if (targetContent) {
+          const hints = buildHints(issue);
+          const section = extractSection(targetContent, hints);
+
+          if (section) {
+            const res = await fetch("/api/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                documents,
+                mode: "surgical",
+                surgicalPayload: {
+                  section: section.fullMatch,
+                  sectionHeader: section.header,
+                  targetDoc: issue.targetDoc,
+                  issue: {
+                    id: issue.id,
+                    title: issue.title,
+                    description: issue.description,
+                    fix: issue.fix,
+                    evidence: issue.evidence,
+                  },
+                },
+              }),
+            });
+
+            if (res.ok) {
+              const patchedSection = await streamFull(res);
+              try {
+                const patchedDoc = applyPatch(targetContent, section, patchedSection);
+                finalDocs = { ...documents, [issue.targetDoc]: patchedDoc };
+                onDocumentsUpdate({ [issue.targetDoc]: patchedDoc });
+                applied = true;
+              } catch (guardErr) {
+                // Hallucination guard triggered — fall through to fallback
+                console.warn("[surgical] guard rejected patch:", guardErr);
+                usedFallback = true;
               }
+            } else {
+              usedFallback = true;
+            }
+          } else {
+            usedFallback = true; // section not confidently found
+          }
+        }
+
+        // ── PATH B: FALLBACK (harmonize, full doc) ──
+        if (!applied) {
+          const res = await fetch("/api/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              documents,
+              mode: "harmonize",
+              report: `Fix only this issue:\n\nID: ${issue.id}\nTitle: ${issue.title}\nTarget Document: ${issue.targetDoc}\nFix: ${issue.fix}\nDescription: ${issue.description}`,
+            }),
+          });
+
+          if (res.ok) {
+            const raw = await streamFull(res);
+            const { documents: correctedDocs } = parseDocumentBlocks(raw);
+            if (Object.keys(correctedDocs).length > 0) {
+              finalDocs = { ...documents, ...correctedDocs };
+              onDocumentsUpdate(correctedDocs);
+              applied = true;
+            } else {
+              // Fallback also returned nothing — surface the error
+              updateState({
+                issues: verifierStateRef.current.issues.map((i) =>
+                  i.id === issue.id ? { ...i, patchStatus: "error" } : i
+                ),
+              });
             }
           }
         }
 
-        const { documents: correctedDocs } = parseDocumentBlocks(full);
-        if (Object.keys(correctedDocs).length > 0) {
-          onDocumentsUpdate(correctedDocs);
+        if (applied) {
+          updateState({
+            applied: [...verifierStateRef.current.applied, issue.id],
+            issues: verifierStateRef.current.issues.map((i) =>
+              i.id === issue.id
+                ? { ...i, patchStatus: usedFallback ? "fallback" : "patching" }
+                : i
+            ),
+          });
+          // Post-validate: re-verify and check if issue resolved
+          postValidate(issue.id, finalDocs);
         }
-        updateState({ applied: [...verifierState.applied, issue.id] });
       } catch {
-        /* show nothing — user sees button is back */
+        updateState({
+          issues: verifierStateRef.current.issues.map((i) =>
+            i.id === issue.id ? { ...i, patchStatus: "error" } : i
+          ),
+        });
       } finally {
         setApplyingId(null);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [documents, onDocumentsUpdate, onSnapshotVersions, verifierState]
+    [documents, onDocumentsUpdate, onSnapshotVersions, postValidate]
   );
 
-  // ── APPLY ALL FIXES ──
+  // ── APPLY ALL FIXES ── (surgical per issue, fresh docs between each)
   const applyAllFixes = useCallback(async () => {
     const remaining = issues.filter(
       (i) => !dismissed.has(i.id) && !applied.has(i.id) && i.severity !== "info"
@@ -444,67 +608,103 @@ export function VerifierPanel({
     if (remaining.length === 0) return;
 
     updateState({ phase: "harmonizing" });
-
-    // Snapshot before changes
     onSnapshotVersions(documents, "harmonized");
 
+    // Keep a mutable copy so each fix sees the result of the previous one
+    let liveDocs: Record<string, string> = { ...documents as Record<string, string> };
+    const resolvedIds: string[] = [];
+
     try {
-      const issuesText = remaining
-        .map(
-          (i) =>
-            `- ${i.id} (${i.severity}): ${i.title}\n  Target: ${i.targetDoc}\n  Fix: ${i.fix}`
-        )
-        .join("\n\n");
+      for (const issue of remaining) {
+        const targetContent = liveDocs[issue.targetDoc];
+        let fixApplied = false;
 
-      const res = await fetch("/api/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          documents,
-          mode: "harmonize",
-          report: `Fix ALL of the following issues:\n\n${issuesText}`,
-        }),
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let full = "";
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          for (const line of chunk.split("\n")) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6);
-              if (data === "[DONE]") break;
+        // Try surgical first
+        if (targetContent) {
+          const hints = buildHints(issue);
+          const section = extractSection(targetContent, hints);
+          if (section) {
+            const res = await fetch("/api/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                documents: liveDocs,
+                mode: "surgical",
+                surgicalPayload: {
+                  section: section.fullMatch,
+                  sectionHeader: section.header,
+                  targetDoc: issue.targetDoc,
+                  issue: { id: issue.id, title: issue.title, description: issue.description, fix: issue.fix, evidence: issue.evidence },
+                },
+              }),
+            });
+            if (res.ok) {
+              const patchedSection = await streamFull(res);
               try {
-                const parsed = JSON.parse(data);
-                if (parsed.text) full += parsed.text;
-              } catch {
-                /* ignore */
-              }
+                liveDocs[issue.targetDoc] = applyPatch(targetContent, section, patchedSection);
+                fixApplied = true;
+              } catch { /* guard rejected — fall through */ }
             }
           }
         }
+
+        // Fallback harmonize if surgical failed
+        if (!fixApplied) {
+          const res = await fetch("/api/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              documents: liveDocs,
+              mode: "harmonize",
+              report: `Fix: ${issue.id} — ${issue.title}\nTarget: ${issue.targetDoc}\n${issue.fix}`,
+            }),
+          });
+          if (res.ok) {
+            const raw = await streamFull(res);
+            const { documents: correctedDocs } = parseDocumentBlocks(raw);
+            if (Object.keys(correctedDocs).length > 0) {
+              Object.assign(liveDocs, correctedDocs);
+              fixApplied = true;
+            }
+          }
+        }
+
+        if (fixApplied) resolvedIds.push(issue.id);
       }
 
-      const { documents: correctedDocs } = parseDocumentBlocks(full);
-      if (Object.keys(correctedDocs).length > 0) {
-        onDocumentsUpdate(correctedDocs);
-      }
+      // Push all accumulated changes at once
+      onDocumentsUpdate(liveDocs);
       updateState({
         phase: "done",
-        applied: [...verifierState.applied, ...remaining.map((i) => i.id)],
+        applied: [...verifierStateRef.current.applied, ...resolvedIds],
       });
+
+      // Post-validate: single re-verify pass after all fixes
+      if (resolvedIds.length > 0) {
+        await new Promise((r) => setTimeout(r, 400));
+        const res = await fetch("/api/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ documents: liveDocs, mode: "verify", enabledDocs }),
+        });
+        if (res.ok) {
+          const raw = await streamFull(res);
+          const newIssues = parseIssuesFromResponse(raw);
+          const newIssueIds = new Set(newIssues.map((i) => i.id));
+          updateState({
+            issues: verifierStateRef.current.issues.map((i) =>
+              resolvedIds.includes(i.id)
+                ? { ...i, patchStatus: newIssueIds.has(i.id) ? "unresolved" : "resolved" }
+                : i
+            ),
+          });
+        }
+      }
     } catch {
       updateState({ phase: "ready" });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [issues, dismissed, applied, documents, onDocumentsUpdate, onSnapshotVersions, verifierState]);
+  }, [issues, dismissed, applied, documents, enabledDocs, onDocumentsUpdate, onSnapshotVersions]);
+
 
   // ── Counts ──
   const counts = {
@@ -512,6 +712,41 @@ export function VerifierPanel({
     warning: issues.filter((i) => i.severity === "warning").length,
     info: issues.filter((i) => i.severity === "info").length,
   };
+
+  // ── Matrix scanner messages ──
+  const SCAN_PHASES = [
+    "INIT › Bootstrapping telemetry matrix...",
+    "SCAN › Parsing document topology...",
+    "XREF › Cross-referencing semantic layers...",
+    "DIFF › Running divergence detection...",
+    "ANLS › Identifying consistency drift...",
+    "EVID › Extracting evidence fragments...",
+    "RANK › Prioritizing issue vectors...",
+    "COMP › Compiling telemetry report...",
+  ];
+
+  const [scanPhaseIdx, setScanPhaseIdx] = useState(0);
+  const [cursorOn, setCursorOn] = useState(true);
+  const [glitchChar, setGlitchChar] = useState("");
+
+  useEffect(() => {
+    if (phase !== "verifying") return;
+    setScanPhaseIdx(0);
+    const phaseTimer = setInterval(() => {
+      setScanPhaseIdx((i) => (i + 1) % SCAN_PHASES.length);
+    }, 1900);
+    const cursorTimer = setInterval(() => setCursorOn((v) => !v), 530);
+    const GLITCH_CHARS = "!@#$%^&*░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼";
+    const glitchTimer = setInterval(() => {
+      setGlitchChar(GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)]);
+      setTimeout(() => setGlitchChar(""), 80);
+    }, 600);
+    return () => { clearInterval(phaseTimer); clearInterval(cursorTimer); clearInterval(glitchTimer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  const scannedBytes = streamingText.length;
+  const scannedSections = (streamingText.match(/Block \d+|"id":/g) || []).length;
 
   const entropyScore =
     counts.critical > 0
@@ -562,28 +797,106 @@ export function VerifierPanel({
         </div>
       )}
 
-      {/* VERIFYING */}
+      {/* VERIFYING — Matrix Scanner */}
       {phase === "verifying" && (
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-            <span className="text-xs font-mono text-cyan-400">
-              Analyzing document suite...
-            </span>
+        <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
+
+          {/* Top bar */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="relative w-5 h-5 flex items-center justify-center">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                  className="absolute inset-0 rounded-full border-2 border-t-cyan-400 border-r-cyan-400/30 border-b-transparent border-l-transparent"
+                />
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+              </div>
+              <span className="text-[10px] font-mono text-cyan-500 tracking-widest uppercase">
+                SYS:VERIFY — ACTIVE
+              </span>
+              {glitchChar && (
+                <span className="text-[10px] font-mono text-red-400 opacity-80">{glitchChar}</span>
+              )}
+            </div>
             <button
-              onClick={() => {
-                abortRef.current?.abort();
-                updateState({ phase: "idle" });
-              }}
-              className="ml-auto text-[10px] font-mono text-muted-foreground hover:text-destructive"
+              onClick={() => { abortRef.current?.abort(); updateState({ phase: "idle" }); }}
+              className="text-[10px] font-mono text-muted-foreground hover:text-red-400 transition-colors"
             >
-              Cancel
+              ■ ABORT
             </button>
           </div>
-          <div className="prose prose-invert prose-xs max-w-none text-xs opacity-50">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {streamingText.slice(0, 500) + (streamingText.length > 500 ? "..." : "")}
-            </ReactMarkdown>
+
+          {/* Scan bar */}
+          <div className="relative h-1 rounded-full bg-cyan-950 overflow-hidden">
+            <motion.div
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{ background: "linear-gradient(90deg, #06b6d4, #22d3ee, #06b6d4)" }}
+              animate={{ width: ["15%", "85%", "30%", "95%", "50%"], opacity: [1, 0.7, 1, 0.8, 1] }}
+              transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute inset-y-0 w-8 rounded-full blur-sm bg-cyan-400/60"
+              animate={{ left: ["-10%", "110%"] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            />
+          </div>
+
+          {/* Rotating phase messages */}
+          <div
+            className="relative h-10 overflow-hidden border border-cyan-500/10 rounded-md bg-cyan-950/20 px-3 flex items-center"
+            style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(6,182,212,0.02) 2px, rgba(6,182,212,0.02) 4px)" }}
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={scanPhaseIdx}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="flex items-center gap-1.5 text-[11px] font-mono text-cyan-300"
+              >
+                <span className="text-cyan-600 text-[10px]">
+                  [{String(scanPhaseIdx + 1).padStart(2, "0")}/{SCAN_PHASES.length}]
+                </span>
+                <span>{SCAN_PHASES[scanPhaseIdx]}</span>
+                <span className={cn("text-cyan-400 transition-opacity duration-100", cursorOn ? "opacity-100" : "opacity-0")}>
+                  ▌
+                </span>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Live counters */}
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { label: "BYTES", value: scannedBytes.toLocaleString() },
+              { label: "BLOCKS", value: String(scannedSections) },
+              { label: "DOCS", value: String(docCount) },
+            ] as const).map(({ label, value }) => (
+              <div key={label} className="flex flex-col items-center py-1.5 rounded border border-cyan-500/10 bg-cyan-950/20">
+                <span className="text-[8px] font-mono text-cyan-700 tracking-widest">{label}</span>
+                <motion.span
+                  key={value}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-sm font-mono font-bold text-cyan-300"
+                >
+                  {value}
+                </motion.span>
+              </div>
+            ))}
+          </div>
+
+          {/* Raw stream preview */}
+          <div className="flex-1 overflow-hidden rounded border border-cyan-500/5 bg-black/30 p-2 relative min-h-0">
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 4px)" }}
+            />
+            <p className="text-[9px] font-mono text-cyan-900 break-all leading-relaxed line-clamp-6 relative z-10">
+              {streamingText || "Awaiting stream..."}
+            </p>
           </div>
         </div>
       )}
@@ -592,7 +905,66 @@ export function VerifierPanel({
       {(phase === "ready" || phase === "done" || phase === "harmonizing") && (
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Summary Header */}
-          <div className="flex-shrink-0 px-4 py-3 border-b border-border space-y-2">
+          <div className="flex-shrink-0 px-4 py-3 border-b border-border space-y-2 relative overflow-hidden">
+
+            {/* Harmonizing overlay — appears when a fix is being applied */}
+            <AnimatePresence>
+              {(applyingId || phase === "harmonizing") && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute inset-0 z-10 flex flex-col justify-center px-4 py-2 bg-background/80 backdrop-blur-sm"
+                  style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(251,191,36,0.02) 3px, rgba(251,191,36,0.02) 4px)" }}
+                >
+                  {/* Sweep bar */}
+                  <div className="absolute top-0 left-0 right-0 h-0.5 overflow-hidden">
+                    <motion.div
+                      className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-amber-400 to-transparent"
+                      animate={{ left: ["-20%", "120%"] }}
+                      transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1.0, ease: "linear" }}
+                      className="w-3.5 h-3.5 rounded-full border-2 border-t-amber-400 border-r-amber-400/30 border-b-transparent border-l-transparent"
+                    />
+                    <span className="text-[10px] font-mono text-amber-500 tracking-widest uppercase">
+                      PATCH:HARMONIZE — ACTIVE
+                    </span>
+                  </div>
+
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={applyingId ?? "all"}
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 6 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-[10px] font-mono text-amber-300/70"
+                    >
+                      {applyingId
+                        ? `⟶ Rewriting ${applyingId} › Injecting corrected content...`
+                        : "⟶ Batch patch in progress › Cross-document sync..."}
+                    </motion.div>
+                  </AnimatePresence>
+
+                  {/* Bottom sweep */}
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden">
+                    <motion.div
+                      className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent"
+                      animate={{ left: ["120%", "-20%"] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: "linear" }}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-cyan-400" />
@@ -716,9 +1088,8 @@ export function VerifierPanel({
                   )}
                 <motion.button
                   onClick={() => {
-                    updateState({ ...INITIAL_VERIFIER_STATE });
                     setStreamingText("");
-                    setTimeout(runVerify, 100);
+                    runVerify();
                   }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}

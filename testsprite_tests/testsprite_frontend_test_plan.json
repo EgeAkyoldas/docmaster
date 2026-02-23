@@ -1,0 +1,2027 @@
+[
+  {
+    "id": "TC001",
+    "title": "Create a new Web project session successfully",
+    "description": "Verifies a user can create a new session with a valid name and Web project type and land in the workspace.",
+    "category": "Create Project Session",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"New Project\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"New Project\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Project name\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Website Redesign\" into the project name input"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Web\" from the project type list"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Create a new Mobile project session successfully",
+    "description": "Verifies a user can create a new session with a valid name and Mobile project type and land in the workspace.",
+    "category": "Create Project Session",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click \"New Project\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Mobile App MVP\" into the project name input"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Mobile\" from the project type list"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Workspace\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Validate required project name when creating a session",
+    "description": "Verifies the modal shows a validation message and stays open when the project name is empty.",
+    "category": "Create Project Session",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click \"New Project\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Project name\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Project name\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"required\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Project type selection list includes multiple options",
+    "description": "Verifies the project type list offers multiple expected options to choose from.",
+    "category": "Create Project Session",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click \"New Project\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Web\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Mobile\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Business\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Custom\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Create a session using a non-default project type (Business)",
+    "description": "Verifies a user can create a session using an additional project type option beyond Web/Mobile.",
+    "category": "Create Project Session",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click \"New Project\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Go-To-Market Plan\" into the project name input"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Business\" from the project type list"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"chat panel\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Reject whitespace-only project name",
+    "description": "Verifies the modal shows a validation error when the user enters only spaces for the project name.",
+    "category": "Create Project Session",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click \"New Project\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"   \" into the project name input"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"required\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Create\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Create a session with a long project name",
+    "description": "Verifies a long but reasonable project name can still create a session and redirect to the workspace.",
+    "category": "Create Project Session",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click \"New Project\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Enterprise Customer Onboarding Experience Improvements Phase 1\" into the project name input"
+      },
+      {
+        "type": "action",
+        "description": "Select \"Web\" from the project type list"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Create\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"document preview\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Cancel out of the New Project modal without creating a session",
+    "description": "Verifies the user can close the modal and remain on the dashboard without being redirected.",
+    "category": "Create Project Session",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click \"New Project\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Create\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Press Escape"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"New Project\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Auto mode: send chat message and see AI response appear in chat",
+    "description": "Verifies a user can send a message and see an AI response message appear in the conversation in Auto mode.",
+    "category": "AI Chat Document Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Dashboard\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Chat input\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Create a concise PRD outline for a task management app\" into the chat input"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"AI message bubble\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Auto mode: click a document type button and see a new document tab appear",
+    "description": "Verifies requesting a specific document type from the toolbar results in a generated document appearing as a new tab in the document preview.",
+    "category": "AI Chat Document Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Document preview\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"PRD\" document type button in the toolbar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"AI message bubble\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"PRD\" tab in the document preview is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"PRD\" tab in the document preview"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Markdown preview\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Guided mode: toggle Guided and see guided progress bar appear",
+    "description": "Verifies switching from Auto to Guided mode shows the guided progress UI.",
+    "category": "AI Chat Document Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Generation mode toggle\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Guided\" mode toggle"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Guided progress bar\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Generate the project documents for an ecommerce marketplace\" into the chat input"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Guided progress bar\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Guided mode: request a specific document type and confirm it appears as a new doc tab",
+    "description": "Verifies guided generation can be used with a specific document type request and results in a new document tab.",
+    "category": "AI Chat Document Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Guided\" mode toggle"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Guided progress bar\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Tech Spec\" document type button in the toolbar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"AI message bubble\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Tech Spec\" tab in the document preview is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Tech Spec\" tab in the document preview"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Streaming: AI response begins appearing after sending a message",
+    "description": "Verifies the UI shows an in-progress/streaming AI response after sending a message (at least an AI bubble appears promptly).",
+    "category": "AI Chat Document Generation",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Chat input\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Draft a one-page design doc for notifications\" into the chat input"
+      },
+      {
+        "type": "action",
+        "description": "Click the send button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"AI message bubble\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"AI response streaming indicator\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Chat input validation: attempt to send an empty message",
+    "description": "Verifies the user cannot send a blank chat message and no new user message bubble appears.",
+    "category": "AI Chat Document Generation",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Chat input\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the send button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Message\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"User message bubble\" is not visible"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Document generation controls: generate two different document types and verify both tabs exist",
+    "description": "Verifies users can request multiple document types and see multiple document tabs in the preview.",
+    "category": "AI Chat Document Generation",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"PRD\" document type button in the toolbar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"PRD\" tab in the document preview is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Architecture\" document type button in the toolbar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Architecture\" tab in the document preview is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Architecture\" tab in the document preview"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Markdown preview\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Switch between documents using tabs and see content update",
+    "description": "Verifies that document tabs switch the preview to the selected document and show rendered Markdown content.",
+    "category": "Document Preview and Editing",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Dashboard\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on a document tab that is not currently selected"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Document Preview\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Edit\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Rendered Markdown shows formatting and code styling in preview",
+    "description": "Verifies that the preview renders Markdown formatting (e.g., headings/bullets) and displays code blocks in a styled manner.",
+    "category": "Document Preview and Editing",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on a document tab that is likely to contain structured content (for example a PRD or Tech Spec tab)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Document Preview\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify at least one heading-style line of text is visible in the preview (for example a line starting with a document title)"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Enter inline edit mode and save updates to the preview",
+    "description": "Verifies that editing document content in inline edit mode and saving updates the rendered Markdown preview.",
+    "category": "Document Preview and Editing",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on a document tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Edit\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"textarea\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"\\n\\nEDIT TEST: Saved change.\" into the document textarea"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"EDIT TEST: Saved change.\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Enter inline edit mode and cancel restores original content",
+    "description": "Verifies that canceling an inline edit discards changes and restores the original rendered Markdown.",
+    "category": "Document Preview and Editing",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on a document tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Edit\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"textarea\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"\\n\\nEDIT TEST: Should be discarded.\" into the document textarea"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Cancel\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"EDIT TEST: Should be discarded.\" is not visible"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Switching document tabs does not keep edit mode active",
+    "description": "Verifies that changing documents exits editing and shows a normal rendered preview for the newly selected document.",
+    "category": "Document Preview and Editing",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on a document tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Edit\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"textarea\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on a different document tab"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"textarea\" is not visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Edit\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Ask AI button is visible on section headings and opens a request UI",
+    "description": "Verifies that section headings expose an \"Ask AI\" action and that clicking it opens a visible request area for section-specific changes.",
+    "category": "Document Preview and Editing",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Scroll to a section heading within the document preview"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Ask AI\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Ask AI\" button for that section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Ask AI\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Send\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "Toggle a task list item checkbox in the rendered Markdown preview",
+    "description": "Verifies that task list checkboxes in the document preview can be toggled and show an updated checked/unchecked state.",
+    "category": "Document Preview and Editing",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on a document tab that contains a checklist (task list items)"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to a visible task list checkbox in the preview"
+      },
+      {
+        "type": "action",
+        "description": "Click the task list checkbox"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"task list checkbox (checked state)\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "Open an image in fullscreen lightbox from the document preview",
+    "description": "Verifies that clicking an image inside the document preview opens a fullscreen lightbox overlay.",
+    "category": "Document Preview and Editing",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on a document tab that contains an image"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to a visible image in the document preview"
+      },
+      {
+        "type": "action",
+        "description": "Click the image"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Image lightbox\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Press Escape"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Image lightbox\" is not visible"
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "Open version history panel from the session workspace",
+    "description": "Verifies the user can open the history/diff UI from the session page and see a versions list area.",
+    "category": "Document Version History and Diff",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Dashboard\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Click history/diff toggle button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Version History\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC025",
+    "title": "No history available message when there are no saved versions",
+    "description": "Verifies the history panel shows a clear empty-state message when the document has no saved versions.",
+    "category": "Document Version History and Diff",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Dashboard\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Click history/diff toggle button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"No history available\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC026",
+    "title": "Select two versions and open side-by-side diff viewer",
+    "description": "Verifies selecting two versions results in a side-by-side diff view being displayed.",
+    "category": "Document Version History and Diff",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click history/diff toggle button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Version History\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on version \"Version 1\" in the versions list"
+      },
+      {
+        "type": "action",
+        "description": "Click on version \"Version 2\" in the versions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Diff\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC027",
+    "title": "Diff viewer shows both left and right version panes",
+    "description": "Verifies the diff viewer renders two visible panes/columns for the two selected versions.",
+    "category": "Document Version History and Diff",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click history/diff toggle button"
+      },
+      {
+        "type": "action",
+        "description": "Click on version \"Version 1\" in the versions list"
+      },
+      {
+        "type": "action",
+        "description": "Click on version \"Version 2\" in the versions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Left\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Right\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC028",
+    "title": "Diff highlighting is visible when comparing two different versions",
+    "description": "Verifies changes are visually highlighted in the diff view when versions differ.",
+    "category": "Document Version History and Diff",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click history/diff toggle button"
+      },
+      {
+        "type": "action",
+        "description": "Click on version \"Version 1\" in the versions list"
+      },
+      {
+        "type": "action",
+        "description": "Click on version \"Version 2\" in the versions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Changes highlighted\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC029",
+    "title": "Attempting to compare with only one version selected shows guidance",
+    "description": "Verifies the UI prompts the user to select two versions when only one is selected.",
+    "category": "Document Version History and Diff",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click history/diff toggle button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Version History\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on version \"Version 1\" in the versions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Select two versions\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC030",
+    "title": "Switch back from diff view to version list using the toggle",
+    "description": "Verifies the user can return to the versions list after opening the diff viewer.",
+    "category": "Document Version History and Diff",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click history/diff toggle button"
+      },
+      {
+        "type": "action",
+        "description": "Click on version \"Version 1\" in the versions list"
+      },
+      {
+        "type": "action",
+        "description": "Click on version \"Version 2\" in the versions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Diff\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click history/diff toggle button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Version History\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC031",
+    "title": "Export action is not shown before a document is opened (guardrail)",
+    "description": "Verifies the single-document export control is only accessible when a document preview is open.",
+    "category": "Document Export",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Select a document\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Export\" is not visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first document in the documents list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"DocPreview\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Export\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC032",
+    "title": "Run verification and apply a single fix from an issue card",
+    "description": "Verifies the verifier can run, show issues, reveal evidence, and apply a single fix that updates the document preview.",
+    "category": "Document Verifier",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing project session in the dashboard list"
+      },
+      {
+        "type": "action",
+        "description": "Toggle verifier panel open"
+      },
+      {
+        "type": "action",
+        "description": "Click start verification button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"animated verification progress\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Wait for element \"issues list\" to be visible"
+      },
+      {
+        "type": "action",
+        "description": "Expand an issue card to view evidence details"
+      },
+      {
+        "type": "action",
+        "description": "Click apply fix on the expanded issue"
+      }
+    ]
+  },
+  {
+    "id": "TC033",
+    "title": "Issues are grouped/sorted by severity after verification completes",
+    "description": "Verifies issues are presented with visible severity groupings/labels for critical, warning, and info after running verification.",
+    "category": "Document Verifier",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing project session in the dashboard list"
+      },
+      {
+        "type": "action",
+        "description": "Toggle verifier panel open"
+      },
+      {
+        "type": "action",
+        "description": "Click start verification button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for element \"issues list\" to be visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Critical\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Warning\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Info\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC034",
+    "title": "Expand and collapse an issue card to view evidence details",
+    "description": "Verifies evidence details can be opened for an issue and remain visible within the expanded card.",
+    "category": "Document Verifier",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing project session in the dashboard list"
+      },
+      {
+        "type": "action",
+        "description": "Toggle verifier panel open"
+      },
+      {
+        "type": "action",
+        "description": "Click start verification button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for element \"issues list\" to be visible"
+      },
+      {
+        "type": "action",
+        "description": "Expand an issue card to view evidence details"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"evidence details\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the same issue card to collapse it"
+      }
+    ]
+  },
+  {
+    "id": "TC035",
+    "title": "Apply all fixes in bulk from verifier panel",
+    "description": "Verifies the bulk action applies fixes across issues and the UI reflects completion.",
+    "category": "Document Verifier",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing project session in the dashboard list"
+      },
+      {
+        "type": "action",
+        "description": "Toggle verifier panel open"
+      },
+      {
+        "type": "action",
+        "description": "Click start verification button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for element \"issues list\" to be visible"
+      },
+      {
+        "type": "action",
+        "description": "Click apply all fixes button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"All fixes applied\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"issues list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC036",
+    "title": "Dismiss a single issue and ensure it no longer appears in the list",
+    "description": "Verifies an issue can be dismissed and is removed from the visible issues list.",
+    "category": "Document Verifier",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing project session in the dashboard list"
+      },
+      {
+        "type": "action",
+        "description": "Toggle verifier panel open"
+      },
+      {
+        "type": "action",
+        "description": "Click start verification button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for element \"issues list\" to be visible"
+      },
+      {
+        "type": "action",
+        "description": "Dismiss an individual issue"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Issue dismissed\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"issues list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC037",
+    "title": "Navigate from an issue to the affected document section",
+    "description": "Verifies the issue card can deep-link the user to the related document/area in the workspace.",
+    "category": "Document Verifier",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing project session in the dashboard list"
+      },
+      {
+        "type": "action",
+        "description": "Toggle verifier panel open"
+      },
+      {
+        "type": "action",
+        "description": "Click start verification button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for element \"issues list\" to be visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the control to navigate to affected documents from an issue"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"document preview\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Highlighted\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC038",
+    "title": "Verifier requires at least two documents: show blocking message and do not run",
+    "description": "Verifies starting verification with fewer than two documents shows a requirement message and does not display progress.",
+    "category": "Document Verifier",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on a project session that has fewer than 2 documents"
+      },
+      {
+        "type": "action",
+        "description": "Toggle verifier panel open"
+      },
+      {
+        "type": "action",
+        "description": "Click start verification button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"requires at least 2 documents\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"animated verification progress\" is not visible"
+      }
+    ]
+  },
+  {
+    "id": "TC039",
+    "title": "Re-run verification after results are shown",
+    "description": "Verifies the user can start verification again after a completed run and sees progress again.",
+    "category": "Document Verifier",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing project session in the dashboard list"
+      },
+      {
+        "type": "action",
+        "description": "Toggle verifier panel open"
+      },
+      {
+        "type": "action",
+        "description": "Click start verification button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for element \"issues list\" to be visible"
+      },
+      {
+        "type": "action",
+        "description": "Click start verification button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"animated verification progress\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Wait for element \"issues list\" to be visible"
+      }
+    ]
+  },
+  {
+    "id": "TC040",
+    "title": "Generate an image and open it in fullscreen modal",
+    "description": "Verifies a user can generate an image from a prompt, see it inline, and open it in a fullscreen modal.",
+    "category": "Image Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing session in the dashboard list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Architecture diagram of a web app with frontend, API, and database\" into the prompt input"
+      },
+      {
+        "type": "action",
+        "description": "Click generate image button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"generated image\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click image to open fullscreen modal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"image fullscreen modal\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC041",
+    "title": "Inline image appears as a new chat item after generation",
+    "description": "Verifies that generating an image creates a visible inline image in the chat feed for the current session.",
+    "category": "Image Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing session in the dashboard list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the chat panel message list"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Sequence diagram showing login request, token issuance, and subsequent API call\" into the prompt input"
+      },
+      {
+        "type": "action",
+        "description": "Click generate image button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"generated image\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC042",
+    "title": "Fullscreen modal can be dismissed to return to the session workspace",
+    "description": "Verifies that the fullscreen image modal can be closed and the user returns to the normal session view.",
+    "category": "Image Generation",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing session in the dashboard list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Network topology diagram with load balancer, app servers, and database\" into the prompt input"
+      },
+      {
+        "type": "action",
+        "description": "Click generate image button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"generated image\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click image to open fullscreen modal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"image fullscreen modal\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Press Escape"
+      }
+    ]
+  },
+  {
+    "id": "TC043",
+    "title": "Generate image with a very short prompt",
+    "description": "Verifies the image generation workflow works with a minimal prompt and still renders an inline image.",
+    "category": "Image Generation",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing session in the dashboard list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"ERD\" into the prompt input"
+      },
+      {
+        "type": "action",
+        "description": "Click generate image button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"generated image\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC044",
+    "title": "Attempt to generate an image with an empty prompt",
+    "description": "Verifies the UI prevents generation or shows user-visible feedback when the prompt is empty.",
+    "category": "Image Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing session in the dashboard list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Click generate image button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"prompt\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC045",
+    "title": "Handle image generation failure with manual reissue (no retry mechanism)",
+    "description": "Verifies that when image generation fails, the user does not see an automatic retry and must manually reissue the request.",
+    "category": "Image Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing session in the dashboard list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Generate a diagram with intentionally complex details to increase failure likelihood\" into the prompt input"
+      },
+      {
+        "type": "action",
+        "description": "Click generate image button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"error\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click generate image button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"error\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC046",
+    "title": "Failure state shows no inline image rendered",
+    "description": "Verifies that on a failed generation attempt, no new generated image is shown inline (user sees error or absence of image).",
+    "category": "Image Generation",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing session in the dashboard list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Diagram request likely to fail: extremely large, detailed multi-page flowchart\" into the prompt input"
+      },
+      {
+        "type": "action",
+        "description": "Click generate image button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"error\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"generated image\" is not visible"
+      }
+    ]
+  },
+  {
+    "id": "TC047",
+    "title": "Generate multiple images sequentially in the same session",
+    "description": "Verifies the user can generate more than one image in a single session and each appears inline in the chat.",
+    "category": "Image Generation",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on an existing session in the dashboard list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Component diagram for microservice A calling microservice B\" into the prompt input"
+      },
+      {
+        "type": "action",
+        "description": "Click generate image button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"generated image\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Deployment diagram with Kubernetes cluster and ingress\" into the prompt input"
+      },
+      {
+        "type": "action",
+        "description": "Click generate image button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"generated image\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC048",
+    "title": "Open Session Settings panel from a session workspace",
+    "description": "Verifies the settings panel can be opened from the session workspace UI.",
+    "category": "Session Settings",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Dashboard\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/session/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Session Settings\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC049",
+    "title": "Enable a document type and save settings",
+    "description": "Verifies a disabled document type can be enabled and the change persists after saving.",
+    "category": "Session Settings",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Session Settings\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Toggle a document type switch that is currently Off to On"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Saved\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC050",
+    "title": "Disable a document type and save settings",
+    "description": "Verifies an enabled document type can be disabled and the change persists after saving.",
+    "category": "Session Settings",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Session Settings\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Toggle a document type switch that is currently On to Off"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Saved\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC051",
+    "title": "Edit custom instructions for a document type and save",
+    "description": "Verifies custom instructions can be edited for a selected document type and saved.",
+    "category": "Session Settings",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Custom instructions\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on a document type name in the settings list"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Add a short accessibility section.\" into the custom instructions text area"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Saved\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC052",
+    "title": "Reset to defaults then cancel confirmation keeps custom instructions unchanged",
+    "description": "Verifies that canceling the reset confirmation leaves custom instructions unchanged.",
+    "category": "Session Settings",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\""
+      },
+      {
+        "type": "action",
+        "description": "Click on a document type name in the settings list"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Do not include marketing language.\" into the custom instructions text area"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Reset to defaults\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Are you sure\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Cancel\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Do not include marketing language.\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC053",
+    "title": "Saving without changes does not break the settings panel",
+    "description": "Verifies the user can click Save with no edits and the UI remains stable with a visible success state.",
+    "category": "Session Settings",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first session in the sessions list"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Session Settings\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Save\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Saved\" is visible"
+      }
+    ]
+  }
+]

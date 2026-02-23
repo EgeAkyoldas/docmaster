@@ -2,6 +2,59 @@ import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
 
+/**
+ * Loads critical sections from TECH-REF.md (and optionally GAME-TECH-REF.md).
+ * Extracts only: AI model names, deprecated warnings, project deps, anti-pattern table.
+ * Keeps injection small (~4-6 KB) while enforcing the key correctness rules.
+ */
+export function loadTechRefs(includeGameRef = false): string {
+  const root = process.cwd();
+
+  const readFile = (file: string): string => {
+    try { return fs.readFileSync(path.join(root, file), "utf-8"); } catch { return ""; }
+  };
+
+  // Extract H2 sections whose headings contain any of the given keywords.
+  const extractSections = (md: string, keywords: string[]): string => {
+    const sections = md.split(/^(?=## )/m);
+    return sections
+      .filter((s) => keywords.some((kw) => s.toLowerCase().includes(kw.toLowerCase())))
+      .join("\n\n")
+      .trim();
+  };
+
+  const parts: string[] = [];
+
+  const techRef = readFile("TECH-REF.md");
+  if (techRef) {
+    const critical = extractSections(techRef, [
+      "project's dependencies",  // package version table
+      "google genai",            // AI model names + API surface
+      "anti-pattern cheatsheet", // universal do-not-do-this table
+    ]);
+    parts.push(`### From TECH-REF.md\n\n${critical || techRef.slice(0, 6000)}`);
+  }
+
+  if (includeGameRef) {
+    const gameRef = readFile("GAME-TECH-REF.md");
+    if (gameRef) {
+      const critical = extractSections(gameRef, ["quick engine selector", "anti-pattern"]);
+      parts.push(`### From GAME-TECH-REF.md\n\n${critical || gameRef.slice(0, 3000)}`);
+    }
+  }
+
+  if (parts.length === 0) return "";
+
+  return [
+    "\n\n---",
+    "# MANDATORY TECHNICAL REFERENCE — BINDING RULES",
+    "These rules are extracted from the project's TECH-REF.md and are non-negotiable.",
+    "DO NOT suggest, use, or document any deprecated API, model name, or package listed below.",
+    "All tech stack choices, code snippets, and API references MUST comply with these specs.\n",
+    parts.join("\n\n---\n\n"),
+  ].join("\n");
+}
+
 export interface InstructionConfig {
   name: string;
   model: string;

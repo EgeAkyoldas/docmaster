@@ -9,7 +9,14 @@ import { Components } from "react-markdown";
 import { DocTabs, EmptyDocState } from "./DocTabs";
 import { ExportBar } from "./ExportBar";
 import { VerifierPanel, VerifierState } from "./VerifierPanel";
-import { DiffViewer } from "./DiffViewer";
+import dynamic from "next/dynamic";
+
+// Lazy-load DiffViewer — it bundles a syntax highlighter and is only shown
+// when the user toggles diff mode, so keep it out of the initial bundle.
+const DiffViewer = dynamic(() => import("./DiffViewer").then((m) => m.DiffViewer), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-32 text-xs text-muted-foreground font-mono">Loading diff...</div>,
+});
 import { Edit3, Eye, MessageSquare, Save, X, ShieldCheck, Clock, Download, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DocVersion } from "@/lib/storage";
@@ -22,6 +29,7 @@ interface DocPreviewProps {
   onDocumentEdit: (docType: string, newContent: string) => void;
   onAskAboutSection: (sectionTitle: string) => void;
   onDocumentsUpdate: (docs: Record<string, string>) => void;
+  enabledDocs?: string[];
   onSnapshotVersions: (
     docs: Record<string, string>,
     source: "generated" | "edited" | "harmonized"
@@ -67,6 +75,7 @@ export function DocPreview({
   onDocumentEdit,
   onAskAboutSection,
   onDocumentsUpdate,
+  enabledDocs,
   onSnapshotVersions,
   onReportReady,
   verifierState,
@@ -126,101 +135,109 @@ export function DocPreview({
   };
 
   // Custom markdown components for interactive rendering
+  // Memoized by activeDoc + checked so ReactMarkdown doesn't re-render the
+  // entire tree on unrelated state changes (e.g. streaming content updates).
   const isTaskList = activeDoc === "Task List";
   let checkboxCounter = 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const markdownComponents: Components = useMemo(() => {
+    let cbIdx = 0;
+    const comps: Components = {
+      // Section headings with "Ask AI" hover button
+      h1: ({ children }) => (
+        <SectionHeading level={1} onAsk={() => onAskAboutSection(String(children))}>
+          {children}
+        </SectionHeading>
+      ),
+      h2: ({ children }) => (
+        <SectionHeading level={2} onAsk={() => onAskAboutSection(String(children))}>
+          {children}
+        </SectionHeading>
+      ),
+      h3: ({ children }) => (
+        <SectionHeading level={3} onAsk={() => onAskAboutSection(String(children))}>
+          {children}
+        </SectionHeading>
+      ),
+      // Interactive checkboxes for Task List
+      li: ({ children, ...props }) => {
+        if (!isTaskList) {
+          return <li {...props}>{children}</li>;
+        }
+        const childArray = Array.isArray(children) ? children : [children];
+        const firstChild = childArray[0];
+        const isCheckbox =
+          typeof firstChild === "string" &&
+          (firstChild.startsWith("[ ] ") || firstChild.startsWith("[x] ") || firstChild.startsWith("[X] "));
 
-  const markdownComponents: Components = {
-    // Section headings with "Ask AI" hover button
-    h1: ({ children }) => (
-      <SectionHeading level={1} onAsk={() => onAskAboutSection(String(children))}>
-        {children}
-      </SectionHeading>
-    ),
-    h2: ({ children }) => (
-      <SectionHeading level={2} onAsk={() => onAskAboutSection(String(children))}>
-        {children}
-      </SectionHeading>
-    ),
-    h3: ({ children }) => (
-      <SectionHeading level={3} onAsk={() => onAskAboutSection(String(children))}>
-        {children}
-      </SectionHeading>
-    ),
-    // Interactive checkboxes for Task List
-    li: ({ children, ...props }) => {
-      if (!isTaskList) {
+        if (isCheckbox) {
+          const id = `cb-${cbIdx++}`;
+          const isChecked = checked[id] ?? (firstChild.startsWith("[x]") || firstChild.startsWith("[X]"));
+          const label = firstChild.slice(4);
+          return (
+            <li className="list-none flex items-start gap-2 my-1" {...props}>
+              <button
+                onClick={() => toggle(id)}
+                className={cn(
+                  "flex-shrink-0 mt-0.5 w-4 h-4 rounded border transition-all duration-150",
+                  isChecked
+                    ? "bg-cyan-500 border-cyan-500 text-black"
+                    : "border-border hover:border-cyan-500/50 bg-transparent"
+                )}
+              >
+                {isChecked && (
+                  <svg viewBox="0 0 12 12" fill="none" className="w-full h-full p-0.5">
+                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+              <span className={cn("text-sm leading-relaxed", isChecked && "line-through text-muted-foreground")}>
+                {label}
+                {childArray.slice(1)}
+              </span>
+            </li>
+          );
+        }
         return <li {...props}>{children}</li>;
-      }
-      // Detect checkbox items
-      const childArray = Array.isArray(children) ? children : [children];
-      const firstChild = childArray[0];
-      const isCheckbox =
-        typeof firstChild === "string" &&
-        (firstChild.startsWith("[ ] ") || firstChild.startsWith("[x] ") || firstChild.startsWith("[X] "));
-
-      if (isCheckbox) {
-        const id = `cb-${checkboxCounter++}`;
-        const isChecked = checked[id] ?? (firstChild.startsWith("[x]") || firstChild.startsWith("[X]"));
-        const label = firstChild.slice(4);
-        return (
-          <li className="list-none flex items-start gap-2 my-1" {...props}>
-            <button
-              onClick={() => toggle(id)}
-              className={cn(
-                "flex-shrink-0 mt-0.5 w-4 h-4 rounded border transition-all duration-150",
-                isChecked
-                  ? "bg-cyan-500 border-cyan-500 text-black"
-                  : "border-border hover:border-cyan-500/50 bg-transparent"
-              )}
-            >
-              {isChecked && (
-                <svg viewBox="0 0 12 12" fill="none" className="w-full h-full p-0.5">
-                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </button>
-            <span className={cn("text-sm leading-relaxed", isChecked && "line-through text-muted-foreground")}>
-              {label}
-              {childArray.slice(1)}
-            </span>
-          </li>
-        );
-      }
-      return <li {...props}>{children}</li>;
-    },
-    // eslint-disable-next-line @next/next/no-img-element, @typescript-eslint/no-explicit-any
-    img: ({ src, alt, ...props }: any) => (
-      <span className="block my-4 group/img relative">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt={alt || ""}
-          className="w-full max-h-96 object-contain rounded-xl border border-border bg-[#08080f] cursor-pointer transition-transform hover:scale-[1.01]"
-          onClick={() => setLightboxSrc(src)}
-          {...props}
-        />
-        <span className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity">
-          <button
+      },
+      // eslint-disable-next-line @next/next/no-img-element, @typescript-eslint/no-explicit-any
+      img: ({ src, alt, ...props }: any) => (
+        <span className="block my-4 group/img relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={alt || ""}
+            className="w-full max-h-96 object-contain rounded-xl border border-border bg-[#08080f] cursor-pointer transition-transform hover:scale-[1.01]"
             onClick={() => setLightboxSrc(src)}
-            className="p-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white/70 hover:text-white transition-colors"
-            title="Fullscreen"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-          </button>
-          <a
-            href={src}
-            download={alt || "image"}
-            className="p-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white/70 hover:text-white transition-colors"
-            title="Download"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Download className="w-3.5 h-3.5" />
-          </a>
+            {...props}
+          />
+          <span className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity">
+            <button
+              onClick={() => setLightboxSrc(src)}
+              className="p-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white/70 hover:text-white transition-colors"
+              title="Fullscreen"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+            <a
+              href={src}
+              download={alt || "image"}
+              className="p-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white/70 hover:text-white transition-colors"
+              title="Download"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Download className="w-3.5 h-3.5" />
+            </a>
+          </span>
+          {alt && <span className="block text-center text-[10px] font-mono text-muted-foreground mt-1.5">{alt}</span>}
         </span>
-        {alt && <span className="block text-center text-[10px] font-mono text-muted-foreground mt-1.5">{alt}</span>}
-      </span>
-    ),
-  };
+      ),
+    };
+    return comps;
+  // activeDoc changes which doc is shown (affects isTaskList check)
+  // checked changes which checkboxes are ticked (affects rendering)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDoc, checked]);
 
   return (
     <div className="flex flex-col h-full">
@@ -316,6 +333,7 @@ export function DocPreview({
         {verifierActive ? (
           <VerifierPanel
             documents={documents}
+            enabledDocs={enabledDocs}
             verifierState={verifierState}
             onVerifierStateChange={onVerifierStateChange}
             onDocumentsUpdate={onDocumentsUpdate}

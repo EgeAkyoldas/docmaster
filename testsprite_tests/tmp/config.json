@@ -1,0 +1,17 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "executionArgs": {
+    "projectName": "prdbot",
+    "projectPath": "c:\\Users\\Ege\\Documents\\atticawe\\prdbot",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-MhcRPTJKMVPyMizf6fS9sPYy7ko9Ak6uAS0KNysO202Esq3FwuZ-tJmqLqZfnpSaIfQkDMVRCWt6khlEsLUSVMwtSEc5Ncla2c5rHrcK_7R9kxSvmuhpIWuj1lJxPegBglg"
+    }
+  },
+  "serverPort": 52290,
+  "proxy": "http://f3246953-8500-48bb-8e6b-6d0c1c6fd84e:Ha3RlAL0o7tbWjaDNuYVzz6CNOLISxP8@tun.testsprite.com:8080"
+}

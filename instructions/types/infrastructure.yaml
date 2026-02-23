@@ -1,0 +1,106 @@
+id: infrastructure
+label: "Infrastructure"
+icon: Server
+description: "Backend services, DevOps pipelines, cloud infrastructure, or CLI tools"
+enabledDocs:
+  - PRD
+  - Architecture
+  - Tech Stack
+  - Tech Spec
+  - API Spec
+  - Data Model
+  - Security Spec
+  - Roadmap
+  - Task List
+  - Vibe Prompt
+
+instructions:
+  PRD: >
+    generate a complete Product Requirements Document (PRD) for this infrastructure project.
+    Focus on the operational problem being solved, target users (developers, SREs, DevOps teams),
+    SLA/SLO requirements (uptime, latency percentiles, throughput),
+    scalability requirements (requests/second, data volume, concurrent connections),
+    compliance requirements (SOC2, HIPAA, PCI-DSS if applicable),
+    integration points with existing systems, migration strategy from legacy,
+    observability requirements (metrics, logs, traces),
+    and cost optimization targets.
+  Architecture: >
+    generate a complete Architecture Document for this infrastructure project.
+    Cover system topology (multi-region, multi-AZ), service mesh and communication patterns
+    (sync REST/gRPC, async message queues/event streams),
+    container orchestration (Kubernetes/ECS/Nomad), networking architecture
+    (VPC, subnets, load balancers, DNS, CDN), storage architecture
+    (block, object, file systems), caching layers (Redis, Memcached),
+    CI/CD pipeline architecture, blue/green and canary deployment strategy,
+    disaster recovery (RPO/RTO targets), and infrastructure-as-code approach.
+  Tech Stack: >
+    generate a complete Tech Stack Specification for this infrastructure project.
+    Evaluate cloud provider (AWS/GCP/Azure), compute (EC2/Lambda/Cloud Run/K8s),
+    database (RDS PostgreSQL/DynamoDB/CockroachDB), message queue (SQS/RabbitMQ/Kafka),
+    IaC tool (Terraform/Pulumi/CDK), container runtime,
+    service mesh (Istio/Linkerd), secrets management (Vault/AWS Secrets Manager),
+    monitoring stack (Prometheus+Grafana/Datadog/New Relic),
+    logging (ELK/Loki), tracing (Jaeger/OpenTelemetry),
+    and CI/CD platform (GitHub Actions/GitLab CI/ArgoCD).
+  Tech Spec: >
+    generate a complete Technical Specification for this infrastructure project.
+    Detail service implementation: API gateway configuration, request routing rules,
+    authentication middleware (mTLS, API keys, JWT validation),
+    rate limiting and circuit breaker patterns, retry policies with exponential backoff,
+    health check endpoints, graceful shutdown handling,
+    configuration management (env vars, config maps, feature flags),
+    database connection pooling, job queue processing,
+    and structured logging format (JSON, correlation IDs).
+  API Spec: >
+    generate a complete API Specification for this infrastructure project.
+    Define service-to-service APIs (gRPC protobuf definitions or REST OpenAPI),
+    internal vs external API boundaries, authentication between services (mTLS, service tokens),
+    API gateway routing rules, rate limiting per client/tier,
+    webhook delivery system, health and readiness probe endpoints,
+    batch processing APIs, admin/operator APIs,
+    and API deprecation lifecycle.
+  Data Model: >
+    generate a complete Data Model Specification for this infrastructure project.
+    Define data stores and their purposes (OLTP, OLAP, cache, search index),
+    table/collection schemas with partitioning strategy,
+    event schema for message queues/event streams,
+    data retention policies and archival strategy,
+    backup schedules and restore procedures,
+    cross-region replication topology,
+    data migration and versioning approach,
+    and audit log schema.
+  Security Spec: >
+    generate a complete Security Specification for this infrastructure project.
+    Cover network security (firewall rules, security groups, WAF),
+    identity and access management (IAM policies, service accounts, least privilege),
+    secrets rotation policy, encryption (TLS termination, at-rest KMS),
+    vulnerability scanning (container images, dependencies, SAST/DAST),
+    compliance framework mapping, penetration testing scope,
+    DDoS mitigation strategy, incident response runbook,
+    and security monitoring alerts (GuardDuty/Security Hub).
+  Roadmap: >
+    generate a complete Project Roadmap for this infrastructure project.
+    Structure into: Foundation Phase (IaC setup, networking, CI/CD pipeline),
+    Core Services Phase (primary services, database, messaging),
+    Observability Phase (monitoring, alerting, dashboards, SLO tracking),
+    Hardening Phase (security audit, load testing, DR drills),
+    and Operations Phase (runbooks, on-call rotation, cost optimization).
+    Include dependency ordering and rollback plans per phase.
+  Task List: >
+    generate a comprehensive nested task list for this infrastructure project.
+    Structure as Phases → Systems → Tasks.
+    Cover: cloud account setup and IAM, networking (VPC, subnets, peering),
+    IaC repository structure, CI/CD pipeline, container registry,
+    primary compute deployment, database provisioning and migrations,
+    message queue setup, service mesh configuration,
+    monitoring dashboards and alerts, log aggregation,
+    security scanning integration, load testing,
+    documentation (runbooks, architecture diagrams), and DR testing.
+  Vibe Prompt: >
+    generate a comprehensive Vibe Ready Prompt for this infrastructure project —
+    a master AI handoff document synthesizing ALL project documents.
+    Include infrastructure identity (purpose, SLOs, scale targets),
+    cloud architecture summary, service catalog with endpoints,
+    IaC module reference, security posture summary,
+    operational runbook index, deployment procedures,
+    and on-call escalation paths.

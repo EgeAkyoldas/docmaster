@@ -1,3 +1,5 @@
+import { PROJECT_TYPE_PRESETS } from "./doc-definitions";
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -15,6 +17,8 @@ export interface DocVersion {
 export interface Session {
   id: string;
   name: string;
+  projectType: string;
+  enabledDocs: string[];
   instructionKey: string;
   createdAt: number;
   updatedAt: number;
@@ -147,10 +151,26 @@ export async function deleteSession(id: string): Promise<void> {
   await db.delete(STORE, id);
 }
 
-export function createSession(name: string, instructionKey: string): Session {
+export function createSession(name: string, instructionKey: string, projectType = "webapp", enabledDocs?: string[]): Session {
+  // If no enabledDocs provided, default to all doc keys
+  const defaultDocs = [
+    "PRD", "Design Document", "Tech Stack", "Architecture",
+    "Tech Spec", "API Spec", "UI Design", "Data Model",
+    "Security Spec", "Roadmap", "Task List", "Vibe Prompt"
+  ];
+
+  // Look up type-specific instruction overrides from presets
+  const preset = PROJECT_TYPE_PRESETS.find((p: { id: string }) => p.id === projectType);
+  const customInstructions: Record<string, string> = preset?.instructionOverrides
+    ? { ...preset.instructionOverrides }
+    : {};
+
   return {
     id: crypto.randomUUID(),
     name,
+    projectType,
+    enabledDocs: enabledDocs ?? defaultDocs,
+    customInstructions,
     instructionKey,
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -165,31 +185,57 @@ export function generateId(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Debounced save — coalesces rapid writes
+// Debounced saves — two separate channels with different urgency
 // ---------------------------------------------------------------------------
 
-let _debounceTimer: ReturnType<typeof setTimeout> | null = null;
-let _pendingSession: Session | null = null;
+// Channel 1: Message-only updates (chat streaming) — higher delay so typing
+// and streaming don't hammer IndexedDB on every token
+let _msgDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let _pendingMsgSession: Session | null = null;
 
-export function debouncedSaveSession(session: Session, delayMs = 300): void {
-  _pendingSession = session;
-  if (_debounceTimer) clearTimeout(_debounceTimer);
-  _debounceTimer = setTimeout(() => {
-    if (_pendingSession) {
-      void saveSession(_pendingSession);
-      _pendingSession = null;
+export function debouncedSaveSession(session: Session, delayMs = 1500): void {
+  _pendingMsgSession = session;
+  if (_msgDebounceTimer) clearTimeout(_msgDebounceTimer);
+  _msgDebounceTimer = setTimeout(() => {
+    if (_pendingMsgSession) {
+      void saveSession(_pendingMsgSession);
+      _pendingMsgSession = null;
     }
-    _debounceTimer = null;
+    _msgDebounceTimer = null;
+  }, delayMs);
+}
+
+// Channel 2: Document content saves — shorter delay (user edits expect quick persist)
+let _docDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let _pendingDocSession: Session | null = null;
+
+export function debouncedSaveDocuments(session: Session, delayMs = 150): void {
+  _pendingDocSession = session;
+  if (_docDebounceTimer) clearTimeout(_docDebounceTimer);
+  _docDebounceTimer = setTimeout(() => {
+    if (_pendingDocSession) {
+      void saveSession(_pendingDocSession);
+      _pendingDocSession = null;
+    }
+    _docDebounceTimer = null;
   }, delayMs);
 }
 
 export function flushPendingSave(): void {
-  if (_debounceTimer) clearTimeout(_debounceTimer);
-  if (_pendingSession) {
-    void saveSession(_pendingSession);
-    _pendingSession = null;
+  // Flush both channels
+  if (_msgDebounceTimer) clearTimeout(_msgDebounceTimer);
+  if (_pendingMsgSession) {
+    void saveSession(_pendingMsgSession);
+    _pendingMsgSession = null;
   }
-  _debounceTimer = null;
+  _msgDebounceTimer = null;
+
+  if (_docDebounceTimer) clearTimeout(_docDebounceTimer);
+  if (_pendingDocSession) {
+    void saveSession(_pendingDocSession);
+    _pendingDocSession = null;
+  }
+  _docDebounceTimer = null;
 }
 
 // ---------------------------------------------------------------------------

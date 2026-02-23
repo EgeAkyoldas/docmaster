@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { User, Bot, Copy, Check, ImageIcon, AlertCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { User, Bot, Copy, Check, ImageIcon, AlertCircle, Download, Maximize2 } from "lucide-react";
+import { memo, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -18,9 +18,10 @@ interface MessageBubbleProps {
   content: string;
   isStreaming?: boolean;
   inlineImages?: InlineImage[];
+  onImageClick?: (image: InlineImage) => void;
 }
 
-export function MessageBubble({ role, content, isStreaming, inlineImages }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ role, content, isStreaming, inlineImages, onImageClick }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
   const isUser = role === "user";
 
@@ -28,6 +29,15 @@ export function MessageBubble({ role, content, isStreaming, inlineImages }: Mess
     await navigator.clipboard.writeText(content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadImage = (img: InlineImage) => {
+    const a = document.createElement("a");
+    a.href = `data:${img.mimeType};base64,${img.imageData}`;
+    const ext = img.mimeType.split("/")[1] ?? "png";
+    const slug = img.prompt.slice(0, 40).replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    a.download = `apex-visual-${slug}.${ext}`;
+    a.click();
   };
 
   return (
@@ -69,21 +79,37 @@ export function MessageBubble({ role, content, isStreaming, inlineImages }: Mess
           </div>
         )}
 
-        {/* Inline generated images */}
+        {/* Inline generated images — clickable for fullscreen */}
         {inlineImages && inlineImages.length > 0 && (
           <div className="mt-3 space-y-3">
             {inlineImages.map((img, i) => (
-              <div key={i} className="rounded-xl overflow-hidden border border-cyan-500/20">
+              <div key={i} className="rounded-xl overflow-hidden border border-cyan-500/20 group/img">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/5 border-b border-cyan-500/10">
                   <ImageIcon className="w-3 h-3 text-cyan-400" />
-                  <span className="text-xs font-mono text-cyan-400/70 truncate">{img.prompt}</span>
+                  <span className="text-xs font-mono text-cyan-400/70 truncate flex-1">{img.prompt}</span>
+                  <button
+                    onClick={() => handleDownloadImage(img)}
+                    className="flex-shrink-0 p-1 rounded hover:bg-cyan-500/10 text-cyan-400/50 hover:text-cyan-400 transition-colors"
+                    title="Download image"
+                  >
+                    <Download className="w-3 h-3" />
+                  </button>
                 </div>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`data:${img.mimeType};base64,${img.imageData}`}
-                  alt={img.prompt}
-                  className="w-full max-h-80 object-contain bg-[#08080f]"
-                />
+                <div className="relative cursor-zoom-in" onClick={() => onImageClick?.(img)}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`data:${img.mimeType};base64,${img.imageData}`}
+                    alt={img.prompt}
+                    className="w-full max-h-80 object-contain bg-[#08080f] transition-opacity group-hover/img:opacity-90"
+                  />
+                  {/* Expand overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 border border-white/10 text-white text-xs font-mono">
+                      <Maximize2 className="w-3.5 h-3.5" />
+                      View fullscreen
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -101,7 +127,7 @@ export function MessageBubble({ role, content, isStreaming, inlineImages }: Mess
       </div>
     </motion.div>
   );
-}
+});
 
 // Image generation loading placeholder
 export function ImageGeneratingBubble({ prompt }: { prompt: string }) {
@@ -180,40 +206,3 @@ export function TypingIndicator() {
   );
 }
 
-// Hook: detect and resolve image markers from streamed text
-export function useImageMarkers(text: string) {
-  const [generatedImages, setGeneratedImages] = useState<Record<string, InlineImage | "loading" | "error">>({});
-
-  useEffect(() => {
-    const imageRegex = /~~~image:([^~]+)~~~/g;
-    let match;
-    while ((match = imageRegex.exec(text)) !== null) {
-      const prompt = match[1].trim();
-      if (!generatedImages[prompt]) {
-        setGeneratedImages((prev) => ({ ...prev, [prompt]: "loading" }));
-        fetch("/api/generate-image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
-        })
-          .then((r) => r.json())
-          .then((data) => {
-            if (data.imageData) {
-              setGeneratedImages((prev) => ({
-                ...prev,
-                [prompt]: { imageData: data.imageData, mimeType: data.mimeType, prompt },
-              }));
-            } else {
-              setGeneratedImages((prev) => ({ ...prev, [prompt]: "error" }));
-            }
-          })
-          .catch(() => {
-            setGeneratedImages((prev) => ({ ...prev, [prompt]: "error" }));
-          });
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text]);
-
-  return generatedImages;
-}

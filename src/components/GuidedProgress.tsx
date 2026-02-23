@@ -1,13 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Sparkles, X } from "lucide-react";
+import { MessageSquare, Sparkles, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface GuidedSession {
   docType: string;
   totalTopics: number;
   answeredCount: number;
+  topics: string[];
 }
 
 interface GuidedProgressProps {
@@ -17,7 +19,8 @@ interface GuidedProgressProps {
 }
 
 export function GuidedProgress({ session, onGenerateNow, onCancel }: GuidedProgressProps) {
-  const { docType, totalTopics, answeredCount } = session;
+  const { docType, totalTopics, answeredCount, topics } = session;
+  const [showTopics, setShowTopics] = useState(false);
   const pct = totalTopics > 0 ? Math.round((answeredCount / totalTopics) * 100) : 0;
   const canGenerate = pct >= 60;
 
@@ -96,9 +99,46 @@ export function GuidedProgress({ session, onGenerateNow, onCancel }: GuidedProgr
         </div>
 
         {/* Status text */}
-        <p className="text-[10px] font-mono text-muted-foreground mt-1">
-          {statusText}
-        </p>
+        <div className="flex items-center justify-between mt-1">
+          <p className="text-[10px] font-mono text-muted-foreground">{statusText}</p>
+          {topics.length > 0 && (
+            <button
+              onClick={() => setShowTopics((v) => !v)}
+              className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showTopics ? "Hide" : "Show"} topics
+              <ChevronDown
+                className={cn("w-3 h-3 transition-transform", showTopics && "rotate-180")}
+              />
+            </button>
+          )}
+        </div>
+
+        {/* Collapsible topic list */}
+        <AnimatePresence>
+          {showTopics && (
+            <motion.ul
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="overflow-hidden mt-2 space-y-0.5"
+            >
+              {topics.map((topic, i) => {
+                const done = i < answeredCount;
+                return (
+                  <li key={i} className={cn(
+                    "flex items-center gap-1.5 text-[10px] font-mono",
+                    done ? "text-green-400" : "text-muted-foreground/70"
+                  )}>
+                    <span className="text-[9px]">{done ? "✅" : "⬜"}</span>
+                    {topic}
+                  </li>
+                );
+              })}
+            </motion.ul>
+          )}
+        </AnimatePresence>
       </motion.div>
     </AnimatePresence>
   );

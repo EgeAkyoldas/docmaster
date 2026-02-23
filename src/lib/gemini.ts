@@ -1,13 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.GEMINI_API_KEY;
-
-if (!apiKey) {
-  throw new Error("GEMINI_API_KEY environment variable is not set");
-}
-
-const ai = new GoogleGenAI({ apiKey });
-
 export interface ChatMessage {
   role: "user" | "model";
   parts: [{ text: string }];
@@ -23,6 +15,10 @@ export interface StreamChatOptions {
 }
 
 export async function streamChat(options: StreamChatOptions) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
+  const ai = new GoogleGenAI({ apiKey });
+
   const {
     model = process.env.GEMINI_REASONING_MODEL ?? "gemini-3-flash-preview",
     systemInstruction,

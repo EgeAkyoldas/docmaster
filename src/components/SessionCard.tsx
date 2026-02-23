@@ -1,11 +1,42 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FileText, Clock, Trash2, ChevronRight } from "lucide-react";
+import {
+  FileText,
+  Clock,
+  Trash2,
+  ChevronRight,
+  Monitor,
+  Gamepad2,
+  TrendingUp,
+  Palette,
+  Megaphone,
+  Server,
+  Settings,
+} from "lucide-react";
 import { Session } from "@/lib/storage";
-import { formatDate, truncate } from "@/lib/utils";
-import { DOCUMENT_LABELS } from "@/lib/constants";
+import { formatDate } from "@/lib/utils";
+import { PROJECT_TYPE_PRESETS } from "@/lib/doc-definitions";
 
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Monitor,
+  Gamepad2,
+  TrendingUp,
+  Palette,
+  Megaphone,
+  Server,
+  Settings,
+};
+
+const TYPE_BADGE_COLORS: Record<string, string> = {
+  webapp: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+  game: "text-violet-400 bg-violet-500/10 border-violet-500/20",
+  business: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+  "design-system": "text-pink-400 bg-pink-500/10 border-pink-500/20",
+  marketing: "text-orange-400 bg-orange-500/10 border-orange-500/20",
+  infrastructure: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  custom: "text-sky-400 bg-sky-500/10 border-sky-500/20",
+};
 
 interface SessionCardProps {
   session: Session;
@@ -13,21 +44,15 @@ interface SessionCardProps {
   onDelete: (id: string) => void;
 }
 
-const DOC_TYPE_COLORS: Record<string, string> = {
-  prd: "text-cyan-400 bg-cyan-400/10",
-  design: "text-purple-400 bg-purple-400/10",
-  techstack: "text-green-400 bg-green-400/10",
-  architecture: "text-orange-400 bg-orange-400/10",
-  techspec: "text-blue-400 bg-blue-400/10",
-  roadmap: "text-yellow-400 bg-yellow-400/10",
-  apispec: "text-pink-400 bg-pink-400/10",
-};
-
 export function SessionCard({ session, onOpen, onDelete }: SessionCardProps) {
   const docCount = Object.keys(session.documents).length;
   const msgCount = session.messages.length;
-  const label = DOCUMENT_LABELS[session.instructionKey] ?? session.instructionKey;
-  const colorClass = DOC_TYPE_COLORS[session.instructionKey] ?? "text-cyan-400 bg-cyan-400/10";
+
+  const typeId = session.projectType ?? "webapp";
+  const preset = PROJECT_TYPE_PRESETS.find((p) => p.id === typeId);
+  const typeLabel = preset?.label ?? "Web/Mobile App";
+  const IconComp = ICON_MAP[preset?.icon ?? "Monitor"] ?? Monitor;
+  const badgeColor = TYPE_BADGE_COLORS[typeId] ?? TYPE_BADGE_COLORS.webapp;
 
   return (
     <motion.div
@@ -50,15 +75,15 @@ export function SessionCard({ session, onOpen, onDelete }: SessionCardProps) {
 
       <div className="flex items-start gap-4">
         {/* Icon */}
-        <div className={`p-2.5 rounded-lg ${colorClass} flex-shrink-0`}>
-          <FileText className="w-5 h-5" />
+        <div className={`p-2.5 rounded-lg ${badgeColor} border flex-shrink-0`}>
+          <IconComp className="w-5 h-5" />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className={`text-xs font-mono font-semibold px-2 py-0.5 rounded-full ${colorClass}`}>
-              {label}
+            <span className={`text-xs font-mono font-semibold px-2 py-0.5 rounded-full border ${badgeColor}`}>
+              {typeLabel}
             </span>
           </div>
           <h3 className="font-semibold text-foreground truncate pr-8">
