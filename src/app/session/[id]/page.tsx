@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Zap, ChevronRight, Settings } from "lucide-react";
+import { ArrowLeft, Zap, ChevronRight, Settings, HelpCircle } from "lucide-react";
+import { ProductGuide } from "@/components/ProductGuide";
 import { ChatPanel, ChatPanelHandle } from "@/components/ChatPanel";
 import { DocPreview } from "@/components/DocPreview";
 import { SessionSettings } from "@/components/SessionSettings";
@@ -35,6 +36,7 @@ export default function SessionPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [verifierState, setVerifierState] = useState<VerifierState>(INITIAL_VERIFIER_STATE);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const chatPanelRef = useRef<ChatPanelHandle>(null);
 
   useEffect(() => {
@@ -250,6 +252,13 @@ export default function SessionPage() {
               </motion.div>
             )}
             <button
+              onClick={() => setShowGuide(true)}
+              className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              title="How it works"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => setSettingsOpen(true)}
               className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
               title="Session Settings"
@@ -324,6 +333,9 @@ export default function SessionPage() {
         onUpdate={handleCustomInstructionsUpdate}
         onEnabledDocsUpdate={handleEnabledDocsUpdate}
       />
+
+      {/* Product Guide */}
+      <ProductGuide isOpen={showGuide} onClose={() => setShowGuide(false)} />
     </div>
   );
 }

@@ -17,7 +17,9 @@ import {
   Settings,
   ChevronLeft,
   Check,
+  HelpCircle,
 } from "lucide-react";
+import { ProductGuide, shouldShowGuide } from "@/components/ProductGuide";
 import { SessionCard } from "@/components/SessionCard";
 import {
   getSessions,
@@ -69,6 +71,12 @@ export default function DashboardPage() {
   const [projectName, setProjectName] = useState("");
   const [selectedType, setSelectedType] = useState<ProjectType | null>(null);
   const [step, setStep] = useState<1 | 2>(1);
+  const [showGuide, setShowGuide] = useState(false);
+
+  // Auto-show guide on first visit
+  useEffect(() => {
+    if (shouldShowGuide()) setShowGuide(true);
+  }, []);
 
   useEffect(() => {
     getSessions().then(setSessions);
@@ -117,15 +125,24 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">AI Document Factory</p>
             </div>
           </div>
-          <motion.button
-            onClick={() => setShowNewModal(true)}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-500 text-cyber-dark font-mono font-semibold text-sm hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20"
-          >
-            <Plus className="w-4 h-4" />
-            New Project
-          </motion.button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowGuide(true)}
+              className="p-2 rounded-lg border border-border hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              title="How it works"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+            <motion.button
+              onClick={() => setShowNewModal(true)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-500 text-cyber-dark font-mono font-semibold text-sm hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20"
+            >
+              <Plus className="w-4 h-4" />
+              New Project
+            </motion.button>
+          </div>
         </div>
       </header>
 
@@ -363,6 +380,9 @@ export default function DashboardPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Product Guide */}
+      <ProductGuide isOpen={showGuide} onClose={() => setShowGuide(false)} />
     </div>
   );
 }
