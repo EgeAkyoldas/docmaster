@@ -219,19 +219,65 @@ function parseSummaryFromResponse(text: string): string {
   const match = text.match(/~~~summary\s*\n([\s\S]*?)~~~/);
   if (match) return match[1].trim();
 
-  // Strip out JSON arrays and code blocks to get clean summary text
   let cleaned = text;
-  // Remove ~~~issues~~~ blocks
+
+  // Remove ~~~issues~~~ and ~~~summary~~~ blocks
   cleaned = cleaned.replace(/~~~issues[\s\S]*?~~~/g, '');
-  // Remove ```json blocks
-  cleaned = cleaned.replace(/```json[\s\S]*?```/g, '');
-  // Remove bare JSON arrays (bracket-depth aware)
-  cleaned = cleaned.replace(/\[\s*\{[\s\S]*?\}\s*\]/g, '');
-  // Remove remaining ~~~ blocks
   cleaned = cleaned.replace(/~~~[\s\S]*?~~~/g, '');
-  // Remove ``` blocks
+  // Remove ```json and ``` blocks
   cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
-  cleaned = cleaned.trim();
+
+  // Bracket-depth aware removal of JSON arrays and objects
+  const stripJson = (src: string): string => {
+    let result = '';
+    let i = 0;
+    while (i < src.length) {
+      if (src[i] === '[' || src[i] === '{') {
+        const open = src[i];
+        const close = open === '[' ? ']' : '}';
+        let depth = 1;
+        let j = i + 1;
+        let inStr = false;
+        let esc = false;
+        while (j < src.length && depth > 0) {
+          const ch = src[j];
+          if (esc) { esc = false; j++; continue; }
+          if (ch === '\\') { esc = true; j++; continue; }
+          if (ch === '"') { inStr = !inStr; j++; continue; }
+          if (!inStr) {
+            if (ch === open) depth++;
+            if (ch === close) depth--;
+          }
+          j++;
+        }
+        const block = src.slice(i, j);
+        // Only skip JSON-shaped blocks, not markdown [links] or short inline content
+        if (block.includes('"id"') || block.includes('"severity"') || block.includes('"fix"') || block.length > 200) {
+          i = j;
+        } else {
+          result += src[i];
+          i++;
+        }
+      } else {
+        result += src[i];
+        i++;
+      }
+    }
+    return result;
+  };
+
+  cleaned = stripJson(cleaned);
+
+  // Strip lines that are pure JSON key-value fragments
+  cleaned = cleaned.split('\n').filter(line => {
+    const t = line.trim();
+    if (!t) return true;
+    if (/^["}\]]/.test(t) && t.length < 5) return false;
+    if (/^"[a-zA-Z]+"\s*:/.test(t)) return false;
+    return true;
+  }).join('\n');
+
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
 
   if (cleaned.length > 50) return cleaned.slice(0, 2000);
 
