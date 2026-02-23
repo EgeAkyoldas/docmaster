@@ -90,7 +90,10 @@ RULES:
 3. If I give a vague answer, simplify: offer 2-3 concrete options to choose from.
 4. If I say "I don't know", suggest the most common industry approach and ask for confirmation.
 5. NEVER assume or fabricate answers I haven't given.
-6. After each answer, report progress exactly like this: "✅ X/${topics.length} topics covered"
+6. After each answer, show the current topic checklist using this EXACT markdown checkbox format:
+   - [x] Topic Name (for covered topics)
+   - [ ] Topic Name (for remaining topics)
+   Then add a summary line: "✅ X/${topics.length} topics covered"
 7. When ≥${Math.ceil(topics.length * 0.6)} topics (60%) are covered, ask: "I have enough info to generate. Want to continue answering or should I generate now?"
 8. When I say "generate" or after ≥${Math.ceil(topics.length * 0.8)} topics (80%) are covered and I seem ready, generate the full ${docLabel}.
 9. For any topic NOT covered, explicitly write "[To be determined — not discussed]" in the document.
