@@ -526,17 +526,30 @@ This is required for the document to appear in the preview panel.`);
             </div>
           )}
 
-          {messages.slice(-50).map((msg) => (
-            <div key={msg.id} className="msg-bubble">
-              <MessageBubble
-                role={msg.role}
-                content={msg.content}
-                onImageClick={setImageModalData}
-                guidedTopics={guidedSession && msg.role === "assistant" ? guidedSession.topics : undefined}
-                guidedAnswered={guidedSession && msg.role === "assistant" ? guidedSession.answeredCount : undefined}
-              />
-            </div>
-          ))}
+          {messages.slice(-50).map((msg, idx, arr) => {
+            // Determine if this is the last assistant message in the visible list
+            const isLastAssistant = !isStreaming && msg.role === "assistant" && guidedSession != null
+              && arr.slice(idx + 1).every((m) => m.role !== "assistant");
+            return (
+              <div key={msg.id} className="msg-bubble">
+                <MessageBubble
+                  role={msg.role}
+                  content={msg.content}
+                  onImageClick={setImageModalData}
+                  guidedTopics={guidedSession && msg.role === "assistant" ? guidedSession.topics : undefined}
+                  guidedAnswered={guidedSession && msg.role === "assistant" ? guidedSession.answeredCount : undefined}
+                  isLastAssistant={isLastAssistant}
+                  onOptionSelect={(selected) => {
+                    if (selected.length > 0) {
+                      setInput(selected.join("\n"));
+                    } else {
+                      setInput("");
+                    }
+                  }}
+                />
+              </div>
+            );
+          })}
 
           {isStreaming && streamingContent && (
             <MessageBubble

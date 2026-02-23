@@ -1,8 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { User, Bot, Copy, Check, ImageIcon, AlertCircle, Download, Maximize2, CircleCheck, Circle } from "lucide-react";
-import { memo, useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { User, Bot, Copy, Check, ImageIcon, AlertCircle, Download, Maximize2, CircleCheck, Circle, CheckCircle2 } from "lucide-react";
+import { memo, useState, useEffect, useMemo, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,12 @@ export interface InlineImage {
   prompt: string;
 }
 
+export interface ParsedOption {
+  label: string;   // e.g. "Option A"
+  text: string;    // e.g. "Task creation → Task completion → Progress tracking."
+  full: string;    // full original line
+}
+
 interface MessageBubbleProps {
   role: "user" | "assistant";
   content: string;
@@ -21,11 +27,44 @@ interface MessageBubbleProps {
   onImageClick?: (image: InlineImage) => void;
   guidedTopics?: string[];
   guidedAnswered?: number;
+  isLastAssistant?: boolean;
+  onOptionSelect?: (selected: string[]) => void;
 }
 
-export const MessageBubble = memo(function MessageBubble({ role, content, isStreaming, inlineImages, onImageClick, guidedTopics, guidedAnswered = 0 }: MessageBubbleProps) {
+// Parse options from AI text: **Option A:** description
+export function parseOptions(text: string): ParsedOption[] {
+  const opts: ParsedOption[] = [];
+  const regex = /[-*]\s*\*\*(?:Option\s+)?([A-Z0-9]+)[):.]?\*\*[:\s]+(.+)/gi;
+  for (const m of text.matchAll(regex)) {
+    opts.push({ label: m[1], text: m[2].trim(), full: m[0].trim() });
+  }
+  return opts;
+}
+
+export const MessageBubble = memo(function MessageBubble({ role, content, isStreaming, inlineImages, onImageClick, guidedTopics, guidedAnswered = 0, isLastAssistant, onOptionSelect }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
+  const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
   const isUser = role === "user";
+
+  // Parse options from AI content
+  const options = useMemo(() => {
+    if (isUser || isStreaming || !isLastAssistant) return [];
+    return parseOptions(content);
+  }, [content, isUser, isStreaming, isLastAssistant]);
+
+  // Reset selections when content changes
+  useEffect(() => { setSelectedOptions(new Set()); }, [content]);
+
+  const toggleOption = useCallback((label: string) => {
+    setSelectedOptions(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      // Notify parent of selected option texts
+      const selectedTexts = options.filter(o => next.has(o.label)).map(o => `${o.label}: ${o.text}`);
+      onOptionSelect?.(selectedTexts);
+      return next;
+    });
+  }, [options, onOptionSelect]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(content);
@@ -92,6 +131,45 @@ export const MessageBubble = memo(function MessageBubble({ role, content, isStre
             {isStreaming && (
               <span className="inline-block w-1.5 h-4 bg-cyan-400 ml-0.5 animate-pulse rounded-sm" />
             )}
+          </div>
+        )}
+
+        {/* Interactive option chips */}
+        {options.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <p className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-wider mb-2">
+              Tap to select · multiple allowed
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {options.map((opt) => {
+                const isSelected = selectedOptions.has(opt.label);
+                return (
+                  <motion.button
+                    key={opt.label}
+                    onClick={() => toggleOption(opt.label)}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={cn(
+                      "flex items-start gap-2 px-3 py-2 rounded-lg text-left text-xs font-mono transition-all duration-150 border",
+                      isSelected
+                        ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-300"
+                        : "bg-white/[0.03] border-white/[0.06] text-foreground/80 hover:bg-white/[0.06] hover:border-white/[0.12]"
+                    )}
+                  >
+                    <span className="flex-shrink-0 mt-0.5">
+                      {isSelected
+                        ? <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                        : <Circle className="w-3.5 h-3.5 text-muted-foreground/40" />
+                      }
+                    </span>
+                    <span>
+                      <span className={cn("font-semibold", isSelected ? "text-cyan-300" : "text-foreground/90")}>{opt.label}:</span>{" "}
+                      <span className="text-muted-foreground">{opt.text}</span>
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
           </div>
         )}
 
