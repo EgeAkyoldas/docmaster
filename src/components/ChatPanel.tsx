@@ -236,7 +236,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
       } catch {
         return { prompt, status: "error" };
       }
-    }, []);
+    }, [apiKey]);
 
     // User-initiated manual image generation
     const handleGenerateImageManual = useCallback(async () => {
@@ -375,7 +375,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
           abortRef.current = null;
         }
       },
-      [isStreaming, messages, existingDocs, onMessagesUpdate, onDocumentsUpdate, onStreamingChange, generateImage]
+      [isStreaming, messages, existingDocs, onMessagesUpdate, onDocumentsUpdate, onStreamingChange, generateImage, apiKey]
     );
 
     const handleSend = useCallback(() => sendMessage(input), [input, sendMessage]);
