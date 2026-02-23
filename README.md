@@ -16,7 +16,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15.1-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Gemini AI](https://img.shields.io/badge/Gemini_AI-2.0_Flash-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Gemini AI](https://img.shields.io/badge/Gemini_AI-2.5_%2F_3-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
@@ -41,7 +41,23 @@ DocMaster is an **AI-powered documentation factory** that transforms a simple co
 ## ✦ Features
 
 ### 🤖 Conversational Document Generation
-Chat naturally with Gemini 2.0 Flash to describe your project. The AI understands context, asks clarifying questions, and generates documents that are tailored to your specific needs — not generic templates.
+Chat naturally with Gemini to describe your project. The AI understands context, asks clarifying questions, and generates documents tailored to your specific needs — not generic templates.
+
+### 🔑 Bring Your Own API Key
+DocMaster works with your personal Gemini API key. Open **API Settings** in the chat panel to enter your key — it's stored locally in your browser and sent directly to Google. We never see or store it.
+
+### ⚡ Model Selector
+Choose your Gemini model directly from the API Settings panel:
+
+| Model | Speed | Best For |
+|-------|-------|----------|
+| **Flash 2.5 Lite** | ⚡ Fastest | Quick answers, rapid iteration |
+| **Flash 2.5** | 🔵 Fast | General-purpose document generation |
+| **Pro 2.5** | 🔷 Smart | Complex, large documents |
+| **Flash 3** | 🟣 New | Frontier-class performance, low cost |
+| **Pro 3** | 🌟 Best | Maximum quality, state-of-the-art reasoning |
+
+Your selection persists across sessions and applies to both chat and the AI Verifier.
 
 ### 📁 7 Project Type Presets
 Each preset activates the right document toolkit and uses domain-specific AI instructions:
@@ -79,6 +95,10 @@ The built-in Verifier cross-checks every document against intelligent rules:
 - Identifies cross-document inconsistencies
 - Flags incomplete or contradictory decisions
 - **Surgical patch mode** — AI fixes specific issues without rewriting the whole document
+- Post-fix re-verification to confirm issues are resolved
+
+### 🎯 Guided Mode
+Activate Guided Mode to get a structured topic checklist for your session. The AI tracks which topics have been covered and shows a progress indicator — great for ensuring thorough project discovery before generating documents. The progress panel starts collapsed and expands on demand.
 
 ### 🔀 Diff Viewer
 Side-by-side diff view showing exactly what changed between document versions. Never lose track of edits.
@@ -92,9 +112,6 @@ Export your entire documentation suite:
 ### 💾 Offline-First Storage
 All sessions are stored locally using IndexedDB. Your documents are private by default — nothing is sent to the cloud except the AI generation calls.
 
-### 🎯 Guided Mode
-Not sure what information the AI needs? Guided mode presents a structured questionnaire for each document type, ensuring you provide the right context for the best output.
-
 ---
 
 ## ✦ Tech Stack
@@ -104,7 +121,7 @@ Not sure what information the AI needs? Guided mode presents a structured questi
 | **Framework** | Next.js 15 (App Router) |
 | **UI** | React 19, Tailwind CSS 3.4, Radix UI |
 | **Animations** | Framer Motion 12 |
-| **AI** | Google Generative AI (`@google/genai`) — Gemini 2.0 Flash |
+| **AI** | Google Generative AI (`@google/genai`) — Gemini 2.5 / 3 |
 | **Markdown** | `react-markdown` + `remark-gfm` + `rehype-highlight` |
 | **Storage** | IndexedDB via `idb` |
 | **Config** | `js-yaml` for instruction definitions |
@@ -127,17 +144,19 @@ cd docmaster
 npm install
 ```
 
-### 2. Configure Environment
+### 2. Configure Environment (optional)
 
 ```bash
 cp .env.example .env.local
 ```
 
-Open `.env.local` and add your Gemini API key:
+Add a server-side fallback key (optional — users can always provide their own via the UI):
 
 ```env
 GEMINI_API_KEY=your_api_key_here
 ```
+
+> **Note:** If no server key is set, users must enter their personal API key via the **API Settings** button in the chat panel. Keys are stored in the browser and never sent to our servers.
 
 ### 3. Run Locally
 
@@ -159,18 +178,21 @@ Open [http://localhost:3000](http://localhost:3000) — you're ready.
 │  1. CREATE PROJECT                                              │
 │     Name your project → Select type preset                      │
 │     ↓                                                           │
-│  2. CHAT                                                        │
+│  2. SET API KEY & MODEL (optional)                              │
+│     Click ⚙ API Settings → Enter Gemini key → Pick model       │
+│     ↓                                                           │
+│  3. CHAT                                                        │
 │     Describe your project to the AI via ChatPanel               │
 │     ↓                                                           │
-│  3. GENERATE DOCS                                               │
+│  4. GENERATE DOCS                                               │
 │     Click any doc tab → AI generates with full context          │
 │     All docs cross-reference each other automatically           │
 │     ↓                                                           │
-│  4. VERIFY & REFINE                                             │
+│  5. VERIFY & REFINE                                             │
 │     Run Verifier → See issues → Apply surgical AI fixes         │
 │     Use Diff Viewer to review changes                           │
 │     ↓                                                           │
-│  5. EXPORT                                                      │
+│  6. EXPORT                                                      │
 │     Download individual Markdown files or full ZIP bundle       │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -198,11 +220,14 @@ docmaster/
 │   │   ├── page.tsx              # Dashboard — session list & new project flow
 │   │   ├── session/[id]/         # Session workspace page
 │   │   ├── api/                  # API routes (Gemini proxy)
+│   │   │   ├── chat/             # Chat streaming endpoint
+│   │   │   └── verify/           # Document verification endpoint
 │   │   ├── globals.css           # Design tokens, glass morphism styles
 │   │   └── layout.tsx            # Root layout
 │   │
 │   ├── components/
 │   │   ├── ChatPanel.tsx         # Main AI chat interface
+│   │   ├── ApiKeyModal.tsx       # API key + model selector modal
 │   │   ├── DocPreview.tsx        # Markdown rendering with syntax highlight
 │   │   ├── DocTabs.tsx           # Document type switcher
 │   │   ├── VerifierPanel.tsx     # Document quality verifier
@@ -215,22 +240,30 @@ docmaster/
 │   │
 │   └── lib/
 │       ├── doc-definitions.ts    # 📌 Single source of truth for all doc types & presets
+│       ├── useApiKey.ts          # API key + model selection hook (localStorage)
 │       ├── storage.ts            # IndexedDB session persistence
 │       ├── gemini.ts             # Gemini AI client setup
 │       ├── instructions.ts       # System prompt templates
 │       ├── patchUtils.ts         # Surgical patch diffing logic
-│       ├── readme-generator.ts   # README auto-generation helper
 │       ├── constants.ts          # App-wide constants
 │       └── utils.ts              # Utility functions
 │
-├── instructions/                 # YAML-based content action definitions
-├── docs/                         # Additional documentation
+├── instructions/                 # YAML-based AI instruction definitions
+│   ├── master-architect.yaml     # Main chat AI config
+│   ├── cybernetic-verifier.yaml  # Verifier AI config
+│   └── *.yaml                    # Per-document-type instructions
 └── next.config.ts
 ```
 
 ---
 
 ## ✦ Key Design Decisions
+
+### Bring Your Own Key Architecture
+The app is designed to work with user-supplied API keys. Each request carries the key in an `x-api-key` header; the server reads it and passes it to the Gemini client. A `useRef`-based pattern ensures stale closures in `useCallback` hooks always access the latest key without unnecessary re-renders.
+
+### User-Selectable AI Model
+The selected Gemini model is persisted to `localStorage` via the `useApiKey` hook and sent as an `x-model` header with every request. Both `/api/chat` and `/api/verify` route handlers honour this header, falling back to the YAML config default (`gemini-2.5-flash-lite`) when absent.
 
 ### Single Source of Truth for Document Definitions
 All 12 document types and 7 project presets are defined in [`doc-definitions.ts`](src/lib/doc-definitions.ts). This single file drives:
@@ -240,13 +273,13 @@ All 12 document types and 7 project presets are defined in [`doc-definitions.ts`
 - Guided topics in `GuidedProgress`
 - Export structure in `ExportBar`
 
-This means adding a new document type is a one-file change.
+Adding a new document type is a one-file change.
 
 ### Cross-Document Context Injection
 When generating any document, the AI receives all previously generated documents as context. This ensures technical decisions made in the Tech Stack document appear consistently in the Architecture document, and the API Spec aligns with the Data Model.
 
 ### Surgical Patch Mode
-The Verifier doesn't regenerate entire documents to fix issues. It identifies the exact problematic section and issues a targeted patch, preserving the rest of the document. This is critical for large documents where a full regeneration would be slow and disrupt approved content.
+The Verifier doesn't regenerate entire documents to fix issues. It identifies the exact problematic section and issues a targeted patch, preserving the rest of the document. A post-fix re-verification step confirms the issue was resolved.
 
 ### Offline-First with IndexedDB
 Using `idb` for session storage means:
@@ -275,7 +308,7 @@ DocMaster is a standard Next.js application. Deploy to [Vercel](https://vercel.c
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/EgeAkyoldas/docmaster)
 
-**Required environment variable:**
+**Optional environment variable** (users can provide their own key via the UI):
 ```
 GEMINI_API_KEY=your_key_here
 ```
