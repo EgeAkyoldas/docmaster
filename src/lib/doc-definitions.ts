@@ -410,6 +410,9 @@ export function buildDocPrompt(
       `\nUse the above documents for cross-referencing. Maintain consistency with established decisions. Do NOT repeat content — reference it where relevant.`
     );
   }
+  parts.push(
+    `\n\nCRITICAL OUTPUT FORMAT: You MUST wrap your entire document output in these exact markers:\n\n~~~doc:${docKey}\n[Full document content here]\n~~~\n\nThis is REQUIRED for the document to appear in the preview panel. Write a brief introductory message before the markers, then output the full document inside them.`
+  );
   return parts.join("");
 }
 

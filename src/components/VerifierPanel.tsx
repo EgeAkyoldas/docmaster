@@ -150,8 +150,23 @@ function parseIssuesFromResponse(text: string): VerifierIssue[] {
 }
 
 function parseSummaryFromResponse(text: string): string {
+  // Try the well-formed ~~~summary~~~ block first
   const match = text.match(/~~~summary\s*\n([\s\S]*?)~~~/);
-  return match ? match[1].trim() : "";
+  if (match) return match[1].trim();
+
+  // Fallback: look for a TELEMETRY REPORT header or similar
+  const reportMatch = text.match(/#{1,3}\s*(?:TELEMETRY|ENTROPY|VERIFICATION)\s*(?:REPORT|ANALYSIS|SUMMARY)[^\n]*\n([\s\S]*?)(?=\n~~~|$)/i);
+  if (reportMatch) return reportMatch[0].trim().slice(0, 2000);
+
+  // Fallback: if we have issues, use everything before the issues block as summary
+  const beforeIssues = text.split(/~~~issues/)[0]?.trim();
+  if (beforeIssues && beforeIssues.length > 50) return beforeIssues.slice(0, 2000);
+
+  // Last resort: strip JSON/code blocks and use first portion
+  const stripped = text.replace(/```[\s\S]*?```/g, '').replace(/~~~[\s\S]*?~~~/g, '').trim();
+  if (stripped.length > 30) return stripped.slice(0, 1500);
+
+  return text.slice(0, 500) || "Verification completed but no summary was generated.";
 }
 
 // ── Issue Card — memoized so only re-renders when its own props change ──

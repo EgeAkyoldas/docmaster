@@ -50,7 +50,13 @@ function buildDocPromptLocal(
 - Fills in any gaps or missing detail
 - Remains fully consistent with all other documents in this session
 
-${instruction}`;
+${instruction}
+
+CRITICAL: Wrap the updated document in these exact markers:
+
+~~~doc:${docKey}
+[Full updated document content]
+~~~`;
   }
 
   return buildDocPrompt(docLabel, docKey, instruction, existingDocs);
