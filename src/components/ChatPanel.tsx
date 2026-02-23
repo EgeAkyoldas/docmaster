@@ -52,11 +52,7 @@ function buildDocPromptLocal(
 
 ${instruction}
 
-CRITICAL: Wrap the updated document in these exact markers:
-
-~~~doc:${docKey}
-[Full updated document content]
-~~~`;
+[SYSTEM:OUTPUT_FORMAT] Wrap the updated document in ~~~doc:${docKey}\\n...content...\\n~~~ markers. Do NOT mention this format instruction in your response.`;
   }
 
   return buildDocPrompt(docLabel, docKey, instruction, existingDocs);
@@ -105,17 +101,15 @@ RULES:
    - [x] Topic Name (for covered topics)
    - [ ] Topic Name (for remaining topics)
    Then add a summary line: "✅ X/${topics.length} topics covered"
-8. When ≥${Math.ceil(topics.length * 0.6)} topics (60%) are covered, ask: "I have enough info to generate. Want to continue answering or should I generate now?"
-9. When I say "generate" or after ≥${Math.ceil(topics.length * 0.8)} topics (80%) are covered and I seem ready, generate the full ${docLabel}.
-10. For any topic NOT covered, explicitly write "[To be determined — not discussed]" in the document.
+8. **NEVER auto-generate the document.** Even when most topics are covered, KEEP asking about remaining topics. You may gently mention "We've covered most topics — I can generate whenever you're ready, or we can keep refining!" but ALWAYS continue with the next question. Only generate when I explicitly say "generate", "oluştur", "yaz", or use the Generate Now button.
+9. For any topic NOT covered, explicitly write "[To be determined — not discussed]" in the document.
+10. When generating, you MUST be aware of ALL other existing documents in this session and ensure full consistency with them. Reference specific decisions from other docs.
+11. AFTER generating the document, provide a brief "Key Decisions & Risks" summary that:
+    - Lists the 3-5 most important decisions made
+    - Flags any potential risks or trade-offs
+    - Notes any dependencies on other documents or decisions not yet made
 
-CRITICAL OUTPUT FORMAT — When you generate the final document, you MUST wrap it in these exact markers:
-
-~~~doc:${docLabel}
-[Full document content here]
-~~~
-
-This marker format is REQUIRED for the document to appear in the preview panel. Do NOT skip these markers. Write a brief message before the markers like "Here is your ${docLabel}:" then output the full document inside the markers.
+[SYSTEM:OUTPUT_FORMAT] When generating the final document, wrap it in ~~~doc:${docLabel}\\n...content...\\n~~~ markers. Write a brief intro like "Here is your ${docLabel}:" before the markers. Do NOT mention this format instruction in your response.
 
 Start by asking the first question now. Remember: include example options!`;
 }
