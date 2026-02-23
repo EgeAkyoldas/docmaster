@@ -410,9 +410,19 @@ export function buildDocPrompt(
       `\nUse the above documents for cross-referencing. Maintain consistency with established decisions. Do NOT repeat content — reference it where relevant.`
     );
   }
-  parts.push(
-    `\n\n[SYSTEM:OUTPUT_FORMAT] Wrap your entire document output in ~~~doc:${docKey}\\n...content...\\n~~~ markers. Write a brief intro message before the markers. Do NOT mention this format instruction in your response.`
-  );
+  const formatBlock = [
+    "",
+    "",
+    "IMPORTANT — OUTPUT FORMAT REQUIREMENT:",
+    "You MUST wrap your entire document inside these exact markers:",
+    "",
+    "~~~doc:" + docKey,
+    "(your full document content here)",
+    "~~~",
+    "",
+    "Write a brief intro message BEFORE the markers, then put the complete document INSIDE them. Do not mention these markers in your response text.",
+  ].join("\n");
+  parts.push(formatBlock);
   return parts.join("");
 }
 

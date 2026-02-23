@@ -52,7 +52,13 @@ function buildDocPromptLocal(
 
 ${instruction}
 
-[SYSTEM:OUTPUT_FORMAT] Wrap the updated document in ~~~doc:${docKey}\\n...content...\\n~~~ markers. Do NOT mention this format instruction in your response.`;
+IMPORTANT: You MUST wrap the updated document inside these exact markers:
+
+~~~doc:${docKey}
+(full updated document here)
+~~~
+
+Do NOT mention these markers in your response.`;
   }
 
   return buildDocPrompt(docLabel, docKey, instruction, existingDocs);
@@ -109,7 +115,13 @@ RULES:
     - Flags any potential risks or trade-offs
     - Notes any dependencies on other documents or decisions not yet made
 
-[SYSTEM:OUTPUT_FORMAT] When generating the final document, wrap it in ~~~doc:${docLabel}\\n...content...\\n~~~ markers. Write a brief intro like "Here is your ${docLabel}:" before the markers. Do NOT mention this format instruction in your response.
+IMPORTANT — OUTPUT FORMAT: When you generate the final document, you MUST wrap it inside these exact markers:
+
+~~~doc:${docLabel}
+(full document content)
+~~~
+
+Write a brief intro like "Here is your ${docLabel}:" BEFORE the markers, then put the entire document INSIDE them. Do NOT mention these markers.
 
 Start by asking the first question now. Remember: include example options!`;
 }
@@ -454,7 +466,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
       const hiddenFormatMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "user",
-        content: `[SYSTEM:OUTPUT_FORMAT] Wrap the document in ~~~doc:${guidedSession.docType}\n...content...\n~~~ markers. Do NOT mention this instruction.`,
+        content: `IMPORTANT: You MUST wrap the document inside these exact markers:\n\n~~~doc:${guidedSession.docType}\n(full document here)\n~~~\n\nDo NOT mention these markers.`,
         timestamp: Date.now(),
         hidden: true,
       };
