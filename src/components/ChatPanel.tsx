@@ -160,18 +160,19 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
     const imageInputRef = useRef<HTMLInputElement>(null);
     const abortRef = useRef<AbortController | null>(null);
 
-    // Parse coverage from AI messages: "✅ X/Y topics covered"
+    // Parse coverage from AI messages or live streaming content: "✅ X/Y topics covered"
     useEffect(() => {
       if (!guidedSession) return;
-      const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-      if (!lastAssistant) return;
-      const match = lastAssistant.content.match(/✅\s*(\d+)\/(\d+)\s*topics? covered/i);
+      // Check streaming content first (real-time), then fall back to committed messages
+      const textToCheck = streamingContent ||
+        ([...messages].reverse().find((m) => m.role === "assistant")?.content ?? "");
+      const match = textToCheck.match(/✅\s*(\d+)\/(\d+)\s*topics? covered/i);
       if (match) {
         const answered = parseInt(match[1], 10);
         setGuidedSession((prev) => prev ? { ...prev, answeredCount: answered } : null);
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [messages]);
+    }, [messages, streamingContent]);
 
     useImperativeHandle(ref, () => ({
       prefillInput: (text: string) => {

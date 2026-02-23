@@ -20,7 +20,7 @@ interface GuidedProgressProps {
 
 export function GuidedProgress({ session, onGenerateNow, onCancel }: GuidedProgressProps) {
   const { docType, totalTopics, answeredCount, topics } = session;
-  const [showTopics, setShowTopics] = useState(false);
+  const [showTopics, setShowTopics] = useState(true);
   const pct = totalTopics > 0 ? Math.round((answeredCount / totalTopics) * 100) : 0;
   const canGenerate = pct >= 60;
 
