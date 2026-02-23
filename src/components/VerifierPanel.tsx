@@ -134,6 +134,18 @@ function parseIssuesFromResponse(text: string): VerifierIssue[] {
     if (objects.length > 0) return objects;
   }
 
+  // Deepest fallback: try to find JSON array anywhere in the text (e.g. inside ```json blocks)
+  const jsonArrayMatch = text.match(/```json\s*\n(\[\s*\{[\s\S]*?\]\s*)\n```/);
+  if (jsonArrayMatch) {
+    try { return JSON.parse(jsonArrayMatch[1]); } catch { /* fallthrough */ }
+  }
+
+  // Ultra fallback: find any JSON array that looks like issues
+  const anyArray = text.match(/(\[\s*\{\s*"id"\s*:\s*"[A-Z]+-\d+"[\s\S]*?\])/)
+  if (anyArray) {
+    try { return JSON.parse(anyArray[1]); } catch { /* fallthrough */ }
+  }
+
   return [];
 }
 
@@ -765,9 +777,11 @@ export function VerifierPanel({
       ? "CRITICAL"
       : counts.warning > 2
         ? "HIGH"
-        : counts.warning > 0
+        : counts.warning > 0 || counts.info > 10
           ? "MEDIUM"
-          : "LOW";
+          : counts.info > 0
+            ? "LOW"
+            : "LOW";
 
   const entropyColor = {
     CRITICAL: "text-red-400 bg-red-500/10 border-red-500/20",
@@ -1011,7 +1025,7 @@ export function VerifierPanel({
                   {counts.info} info
                 </span>
               )}
-              {issues.length === 0 && (
+              {issues.length === 0 && !summary.match(/HIGH|CRITICAL/i) && (
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" />
                   Homeostasis
