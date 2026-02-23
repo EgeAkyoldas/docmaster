@@ -58,7 +58,7 @@ IMPORTANT: You MUST wrap the updated document inside these exact markers:
 (full updated document here)
 ~~~
 
-Do NOT mention these markers in your response.`;
+AFTER the closing ~~~ marker, write a brief summary (3-5 bullet points) highlighting the key changes and decisions in this update. Do NOT mention the markers themselves.`;
   }
 
   return buildDocPrompt(docLabel, docKey, instruction, existingDocs);
@@ -121,7 +121,9 @@ IMPORTANT — OUTPUT FORMAT: When you generate the final document, you MUST wrap
 (full document content)
 ~~~
 
-Write a brief intro like "Here is your ${docLabel}:" BEFORE the markers, then put the entire document INSIDE them. Do NOT mention these markers.
+BEFORE the markers, write a brief intro like "Here is your ${docLabel}:".
+AFTER the closing ~~~ marker, write a quick summary (3-5 bullet points) highlighting the most important decisions and features from the document.
+Do NOT mention the markers themselves.
 
 Start by asking the first question now. Remember: include example options!`;
 }
@@ -479,7 +481,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
       const hiddenFormatMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "user",
-        content: `IMPORTANT: You MUST wrap the document inside these exact markers:\n\n~~~doc:${guidedSession.docType}\n(full document here)\n~~~\n\nDo NOT mention these markers.`,
+        content: `IMPORTANT: You MUST wrap the document inside these exact markers:\n\n~~~doc:${guidedSession.docType}\n(full document here)\n~~~\n\nAFTER the closing ~~~ marker, write a quick summary (3-5 bullet points) highlighting the most important decisions and features. Do NOT mention the markers themselves.`,
         timestamp: Date.now(),
         hidden: true,
       };

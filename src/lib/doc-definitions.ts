@@ -420,7 +420,9 @@ export function buildDocPrompt(
     "(your full document content here)",
     "~~~",
     "",
-    "Write a brief intro message BEFORE the markers, then put the complete document INSIDE them. Do not mention these markers in your response text.",
+    "Write a brief intro message BEFORE the markers, then put the complete document INSIDE them.",
+    "AFTER the closing ~~~ marker, write a quick summary (3-5 bullet points) highlighting the most important decisions and features from the document.",
+    "Do not mention these markers in your response text.",
   ].join("\n");
   parts.push(formatBlock);
   return parts.join("");

@@ -22,6 +22,8 @@ function normalizeMarkdown(raw: string): string {
   const out: string[] = [];
   let inFence = false;
 
+  const isListLine = (l: string) => /^\s*[-*+•▸►]\s|^\s*\d+[.)]\s/.test(l);
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
@@ -37,11 +39,16 @@ function normalizeMarkdown(raw: string): string {
       continue;
     }
 
-    // Strip 4+ space indent that would create unwanted code blocks
-    const stripped = line.replace(/^ {4,}/, "");
+    // Strip 4+ space indent ONLY if the line is NOT a list item (preserve nested lists)
+    const stripped = isListLine(line) ? line : line.replace(/^ {4,}/, "");
 
     // Ensure blank line before headings
     if (/^#{1,4}\s/.test(stripped) && i > 0 && out.length > 0 && out[out.length - 1].trim() !== "") {
+      out.push("");
+    }
+
+    // Ensure blank line before list blocks that follow non-list content
+    if (isListLine(stripped) && out.length > 0 && out[out.length - 1].trim() !== "" && !isListLine(out[out.length - 1])) {
       out.push("");
     }
 
