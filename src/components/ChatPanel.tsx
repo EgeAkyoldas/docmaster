@@ -504,7 +504,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
           {isStreaming && streamingContent && (
             <MessageBubble
               role="assistant"
-              content={parseDocumentBlocks(streamingContent).cleanText || streamingContent}
+              content={streamingContent.replace(/<doc:[^>]*>[\s\S]*$/i, "").trim() || streamingContent}
               isStreaming
             />
           )}
