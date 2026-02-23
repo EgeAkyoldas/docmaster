@@ -36,10 +36,13 @@ yarn-error.log*
 next-env.d.ts
 
 # AI workspace
-
 .gemini/
+.agent/
 
 # temp
 tsc_output*.txt
+
+# env files (all variants)
 .env
-.agent
+.env.*
+!.env.example
