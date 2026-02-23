@@ -366,13 +366,16 @@ export function VerifierPanel({
   const abortRef = useRef<AbortController | null>(null);
 
   const docCount = Object.keys(documents).length;
-  const { apiKey } = useApiKey();
-  // Ref so stale useCallback closures always send the current key
+  const { apiKey, model } = useApiKey();
+  // Refs so stale useCallback closures always send the current key + model
   const apiKeyRef = useRef<string | null>(null);
+  const modelRef = useRef<string>(model);
   useEffect(() => { apiKeyRef.current = apiKey ?? null; }, [apiKey]);
+  useEffect(() => { modelRef.current = model; }, [model]);
   const apiHeaders = () => ({
     "Content-Type": "application/json",
     ...(apiKeyRef.current ? { "x-api-key": apiKeyRef.current } : {}),
+    "x-model": modelRef.current,
   });
 
   // Keep a ref to always-current state to avoid stale closures in callbacks

@@ -154,12 +154,15 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
     const [isGeneratingImage, setIsGeneratingImage] = useState(false);
     const [imageModalData, setImageModalData] = useState<ImageModalData | null>(null);
     const [settingsOpen, setSettingsOpen] = useState(false);
-    const { apiKey, saveApiKey, hasKey } = useApiKey();
+    const { apiKey, saveApiKey, model, saveModel, hasKey } = useApiKey();
     const apiKeyRef = useRef<string | null>(null);
+    const modelRef = useRef<string>(model);
     useEffect(() => { apiKeyRef.current = apiKey ?? null; }, [apiKey]);
+    useEffect(() => { modelRef.current = model; }, [model]);
     const getApiHeaders = () => ({
       "Content-Type": "application/json",
       ...(apiKeyRef.current ? { "x-api-key": apiKeyRef.current } : {}),
+      "x-model": modelRef.current,
     });
     const bottomRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -416,11 +419,11 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
       <>
         <div className="flex flex-col h-full">
 
-        {/* API Key Settings Modal */}
         <ApiKeyModal
           open={settingsOpen}
           currentKey={apiKey}
-          onSave={saveApiKey}
+          currentModel={model}
+          onSave={(key, m) => { saveApiKey(key); saveModel(m); }}
           onClose={() => setSettingsOpen(false)}
         />
 

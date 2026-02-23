@@ -15,8 +15,9 @@ export async function POST(req: NextRequest) {
       customInstructions = {},
     } = body;
 
-    // User-supplied API key takes priority over server env key
+    // User-supplied API key and model take priority over server env / config
     const userApiKey = req.headers.get("x-api-key") || undefined;
+    const userModel  = req.headers.get("x-model") || undefined;
 
     if (!message || typeof message !== "string") {
       return NextResponse.json(
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
     );
 
     const stream = await streamChat({
-      model: config.model,
+      model: userModel || config.model,
       systemInstruction,
       history: geminiHistory,
       message,

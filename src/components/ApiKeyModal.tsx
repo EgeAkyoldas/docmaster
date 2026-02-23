@@ -2,41 +2,44 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Key, X, Eye, EyeOff, CheckCircle2, AlertCircle, ExternalLink } from "lucide-react";
+import { Key, X, Eye, EyeOff, CheckCircle2, AlertCircle, ExternalLink, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GEMINI_MODELS, GeminiModelId } from "@/lib/useApiKey";
 
 interface ApiKeyModalProps {
   open: boolean;
   currentKey: string;
-  onSave: (key: string) => void;
+  currentModel: GeminiModelId;
+  onSave: (key: string, model: GeminiModelId) => void;
   onClose: () => void;
 }
 
-export function ApiKeyModal({ open, currentKey, onSave, onClose }: ApiKeyModalProps) {
+export function ApiKeyModal({ open, currentKey, currentModel, onSave, onClose }: ApiKeyModalProps) {
   const [value, setValue] = useState(currentKey);
+  const [model, setModel] = useState<GeminiModelId>(currentModel);
   const [showKey, setShowKey] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync when opened / key changes externally
   useEffect(() => {
     if (open) {
       setValue(currentKey);
+      setModel(currentModel);
       setShowKey(false);
       setTimeout(() => inputRef.current?.focus(), 80);
     }
-  }, [open, currentKey]);
+  }, [open, currentKey, currentModel]);
 
   const isValid = value.trim().startsWith("AIza") && value.trim().length > 20;
-  const isDirty = value.trim() !== currentKey;
+  const isDirty = value.trim() !== currentKey || model !== currentModel;
 
   const handleSave = () => {
     if (!isDirty) { onClose(); return; }
-    onSave(value.trim());
+    onSave(value.trim(), model);
     onClose();
   };
 
   const handleClear = () => {
-    onSave("");
+    onSave("", model);
     setValue("");
     onClose();
   };
@@ -74,8 +77,8 @@ export function ApiKeyModal({ open, currentKey, onSave, onClose }: ApiKeyModalPr
                     <Key className="w-3.5 h-3.5 text-cyan-400" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-mono font-semibold text-foreground">Gemini API Key</h2>
-                    <p className="text-[10px] text-muted-foreground font-mono">Personal key — never sent to our servers</p>
+                    <h2 className="text-sm font-mono font-semibold text-foreground">API Settings</h2>
+                    <p className="text-[10px] text-muted-foreground font-mono">Key &amp; model — stored locally only</p>
                   </div>
                 </div>
                 <button
@@ -87,7 +90,7 @@ export function ApiKeyModal({ open, currentKey, onSave, onClose }: ApiKeyModalPr
               </div>
 
               {/* Body */}
-              <div className="px-5 py-5 space-y-4">
+              <div className="px-5 py-5 space-y-5">
                 {/* Info banner */}
                 <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-cyan-500/5 border border-cyan-500/15">
                   <AlertCircle className="w-3.5 h-3.5 text-cyan-400/80 flex-shrink-0 mt-0.5" />
@@ -97,7 +100,7 @@ export function ApiKeyModal({ open, currentKey, onSave, onClose }: ApiKeyModalPr
                   </p>
                 </div>
 
-                {/* Input */}
+                {/* API Key */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-mono font-semibold text-muted-foreground uppercase tracking-wider">
                     API Key
@@ -130,8 +133,6 @@ export function ApiKeyModal({ open, currentKey, onSave, onClose }: ApiKeyModalPr
                       {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-
-                  {/* Validation hint */}
                   <div className="flex items-center gap-1.5 h-4">
                     {value && (
                       <>
@@ -148,6 +149,40 @@ export function ApiKeyModal({ open, currentKey, onSave, onClose }: ApiKeyModalPr
                         )}
                       </>
                     )}
+                  </div>
+                </div>
+
+                {/* Model selector */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-mono font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Zap className="w-3 h-3" /> Model
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {GEMINI_MODELS.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setModel(m.id as GeminiModelId)}
+                        className={cn(
+                          "flex flex-col items-start px-3 py-2.5 rounded-xl border text-left transition-all duration-150",
+                          model === m.id
+                            ? "border-cyan-500/50 bg-cyan-500/8 shadow-sm shadow-cyan-500/10"
+                            : "border-border bg-secondary/40 hover:border-border/80 hover:bg-secondary/60"
+                        )}
+                      >
+                        <div className="flex items-center justify-between w-full mb-0.5">
+                          <span className="text-[11px] font-mono font-semibold text-foreground">{m.label}</span>
+                          <span className={cn(
+                            "text-[9px] font-mono px-1.5 py-0.5 rounded-full border",
+                            m.badge === "Fastest" ? "text-green-400 border-green-500/30 bg-green-500/8" :
+                            m.badge === "Smart"   ? "text-cyan-400 border-cyan-500/30 bg-cyan-500/8" :
+                                                    "text-amber-400 border-amber-500/30 bg-amber-500/8"
+                          )}>
+                            {m.badge}
+                          </span>
+                        </div>
+                        <span className="text-[9px] font-mono text-muted-foreground/50 truncate w-full">{m.id}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -191,7 +226,7 @@ export function ApiKeyModal({ open, currentKey, onSave, onClose }: ApiKeyModalPr
                         : "bg-secondary text-muted-foreground border border-border"
                     )}
                   >
-                    Save Key
+                    Save
                   </motion.button>
                 </div>
               </div>
