@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description:
     "Create professional PRDs, design docs, tech specs, and architecture documents through AI-powered conversations.",
   keywords: ["PRD", "product requirements", "design document", "AI", "documentation"],
+  icons: { icon: "/fav.ico" },
 };
 
 export default function RootLayout({
