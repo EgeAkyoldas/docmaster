@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, memo, useEffect } from "react";
+import { useApiKey } from "@/lib/useApiKey";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldCheck,
@@ -365,6 +366,12 @@ export function VerifierPanel({
   const abortRef = useRef<AbortController | null>(null);
 
   const docCount = Object.keys(documents).length;
+  const { apiKey } = useApiKey();
+  const apiHeaders = (extra: Record<string, string> = {}) => ({
+    "Content-Type": "application/json",
+    ...(apiKey ? { "x-api-key": apiKey } : {}),
+    ...extra,
+  });
 
   // Keep a ref to always-current state to avoid stale closures in callbacks
   const verifierStateRef = useRef(verifierState);
@@ -387,7 +394,7 @@ export function VerifierPanel({
     try {
       const res = await fetch("/api/verify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: apiHeaders(),
         body: JSON.stringify({ documents, mode: "verify", enabledDocs }),
         signal: controller.signal,
       });
@@ -463,7 +470,7 @@ export function VerifierPanel({
       try {
         const res = await fetch("/api/verify", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: apiHeaders(),
           body: JSON.stringify({ documents: updatedDocs, mode: "verify", enabledDocs }),
         });
         if (!res.ok) return;
@@ -505,7 +512,7 @@ export function VerifierPanel({
           if (section) {
             const res = await fetch("/api/verify", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: apiHeaders(),
               body: JSON.stringify({
                 documents,
                 mode: "surgical",
@@ -548,7 +555,7 @@ export function VerifierPanel({
         if (!applied) {
           const res = await fetch("/api/verify", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: apiHeaders(),
             body: JSON.stringify({
               documents,
               mode: "harmonize",
@@ -626,7 +633,7 @@ export function VerifierPanel({
           if (section) {
             const res = await fetch("/api/verify", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: apiHeaders(),
               body: JSON.stringify({
                 documents: liveDocs,
                 mode: "surgical",
@@ -652,7 +659,7 @@ export function VerifierPanel({
         if (!fixApplied) {
           const res = await fetch("/api/verify", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: apiHeaders(),
             body: JSON.stringify({
               documents: liveDocs,
               mode: "harmonize",
@@ -684,7 +691,7 @@ export function VerifierPanel({
         await new Promise((r) => setTimeout(r, 400));
         const res = await fetch("/api/verify", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: apiHeaders(),
           body: JSON.stringify({ documents: liveDocs, mode: "verify", enabledDocs }),
         });
         if (res.ok) {

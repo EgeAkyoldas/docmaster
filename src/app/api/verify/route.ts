@@ -139,6 +139,7 @@ Since only ${docEntries.length} of ${scopedDocTypes.length} documents exist, als
 
     // Use empty history — verifier is stateless
     const geminiHistory: ChatMessage[] = [];
+    const userApiKey = req.headers.get("x-api-key") || undefined;
 
     const stream = await streamChat({
       model: config.model,
@@ -147,6 +148,7 @@ Since only ${docEntries.length} of ${scopedDocTypes.length} documents exist, als
       message: userMessage,
       temperature: config.temperature,
       maxOutputTokens: config.maxOutputTokens,
+      apiKey: userApiKey,
     });
 
     // Stream response as SSE
