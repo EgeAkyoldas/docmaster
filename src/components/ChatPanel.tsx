@@ -86,19 +86,24 @@ ${topicChecklist}
 
 RULES:
 1. Ask ONE question at a time. Wait for my answer.
-2. After each answer, check off which topics are now covered.
-3. If I give a vague answer, simplify: offer 2-3 concrete options to choose from.
-4. If I say "I don't know", suggest the most common industry approach and ask for confirmation.
-5. NEVER assume or fabricate answers I haven't given.
-6. After each answer, show the current topic checklist using this EXACT markdown checkbox format:
+2. **ALWAYS provide guidance with every question.** For EVERY question you ask, you MUST include 2-3 concrete example options or suggestions. Format them as a quick pick list like:
+   - **Option A:** [description]
+   - **Option B:** [description]
+   - **Option C:** [description]
+   The user can pick one, combine, or give their own answer. NEVER ask a bare open-ended question without options.
+3. After each answer, check off which topics are now covered.
+4. If I give a very short or vague answer (e.g. "mono", "yes"), acknowledge it, confirm what you understood, and move to the next topic.
+5. If I say "I don't know" or "skip", suggest the most common industry approach, confirm it as the default, and move on.
+6. NEVER assume or fabricate answers I haven't given.
+7. After each answer, show the current topic checklist using this EXACT markdown checkbox format:
    - [x] Topic Name (for covered topics)
    - [ ] Topic Name (for remaining topics)
    Then add a summary line: "✅ X/${topics.length} topics covered"
-7. When ≥${Math.ceil(topics.length * 0.6)} topics (60%) are covered, ask: "I have enough info to generate. Want to continue answering or should I generate now?"
-8. When I say "generate" or after ≥${Math.ceil(topics.length * 0.8)} topics (80%) are covered and I seem ready, generate the full ${docLabel}.
-9. For any topic NOT covered, explicitly write "[To be determined — not discussed]" in the document.
+8. When ≥${Math.ceil(topics.length * 0.6)} topics (60%) are covered, ask: "I have enough info to generate. Want to continue answering or should I generate now?"
+9. When I say "generate" or after ≥${Math.ceil(topics.length * 0.8)} topics (80%) are covered and I seem ready, generate the full ${docLabel}.
+10. For any topic NOT covered, explicitly write "[To be determined — not discussed]" in the document.
 
-Start by asking the first question now.`;
+Start by asking the first question now. Remember: include example options!`;
 }
 
 // DOC_ACTIONS is just the shared definitions — prompt building uses customInstructions at call site
