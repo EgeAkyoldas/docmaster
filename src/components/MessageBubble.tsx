@@ -86,38 +86,38 @@ export const MessageBubble = memo(function MessageBubble({ role, content, isStre
           </div>
         )}
 
-        {/* Guided topic checklist — shows topic titles with live check/uncheck */}
+        {/* Guided topic checklist — compact 2-col chips */}
         {!isUser && guidedTopics && guidedTopics.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-border/50 space-y-1">
-            <p className="text-[10px] font-mono text-muted-foreground/50 mb-1.5 uppercase tracking-wider">Topics covered</p>
-            {guidedTopics.map((topic, i) => {
-              const done = i < guidedAnswered;
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05, duration: 0.2 }}
-                  className={`flex items-center gap-2 text-[11px] font-mono ${
-                    done ? "text-green-400" : "text-muted-foreground/60"
-                  }`}
-                >
-                  <motion.span
-                    animate={done ? { scale: [1.3, 1] } : {}}
-                    transition={{ duration: 0.25 }}
-                    className="text-[10px] flex-shrink-0"
+          <div className="mt-2 pt-2 border-t border-border/30">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">Topics</span>
+              <span className={`text-[9px] font-mono font-semibold ${
+                guidedAnswered >= guidedTopics.length ? "text-green-400" : "text-cyan-400/60"
+              }`}>
+                {guidedAnswered}/{guidedTopics.length}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              {guidedTopics.map((topic, i) => {
+                const done = i < guidedAnswered;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: i * 0.04, duration: 0.15 }}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono truncate ${
+                      done
+                        ? "bg-green-500/10 text-green-400/70 border border-green-500/15"
+                        : "bg-secondary/60 text-muted-foreground/50 border border-border/40"
+                    }`}
                   >
-                    {done ? "✅" : "⬜"}
-                  </motion.span>
-                  <span className={done ? "line-through opacity-60" : ""}>{topic}</span>
-                </motion.div>
-              );
-            })}
-            <p className={`text-[10px] font-mono mt-1.5 ${
-              guidedAnswered >= guidedTopics.length ? "text-green-400" : "text-cyan-400/70"
-            }`}>
-              {guidedAnswered}/{guidedTopics.length} covered
-            </p>
+                    <span className="text-[8px] flex-shrink-0">{done ? "✓" : "·"}</span>
+                    <span className="truncate">{topic}</span>
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
         )}
 
