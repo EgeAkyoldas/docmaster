@@ -1,7 +1,7 @@
 name: "CYBERNETIC-VERIFIER — Ashby Homeostatic Controller"
-model: "gemini-3-flash-preview"
+# model: not set — user's model selection takes priority
 temperature: 0.2
-maxOutputTokens: 32768
+# maxOutputTokens: not set — let the selected model use its own default limit
 
 systemInstruction: |
   # ROLE: CYBERNETIC VERIFIER — Ross Ashby Homeostatic Controller

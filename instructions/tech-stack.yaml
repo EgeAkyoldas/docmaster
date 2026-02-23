@@ -1,7 +1,5 @@
-name: "Tech Stack Strategist"
-model: "gemini-3-flash-preview"
+﻿name: "Tech Stack Strategist"
 temperature: 0.5
-maxOutputTokens: 8192
 
 systemInstruction: |
   # ROLE: TECH STACK STRATEGIST

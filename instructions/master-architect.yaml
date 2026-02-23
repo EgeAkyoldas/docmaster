@@ -1,7 +1,7 @@
 name: "APEX-CYBERNETIC Master Architect"
-model: "gemini-2.5-flash-lite"
+model: "gemini-2.5-flash-lite"  # fallback only — user's model selection takes priority
 temperature: 0.7
-maxOutputTokens: 8192
+# maxOutputTokens: not set — let the selected model use its own default limit
 
 systemInstruction: |
   # ROLE: APEX-CYBERNETIC MASTER ARCHITECT

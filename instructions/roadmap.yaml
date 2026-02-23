@@ -1,7 +1,5 @@
-name: "Project Roadmap Planner"
-model: "gemini-3-flash-preview"
+﻿name: "Project Roadmap Planner"
 temperature: 0.6
-maxOutputTokens: 8192
 
 systemInstruction: |
   # ROLE: PROJECT ROADMAP PLANNER

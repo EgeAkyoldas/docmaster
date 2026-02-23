@@ -57,9 +57,9 @@ export function loadTechRefs(includeGameRef = false): string {
 
 export interface InstructionConfig {
   name: string;
-  model: string;
+  model?: string;           // optional — user's x-model header takes priority anyway
   temperature: number;
-  maxOutputTokens: number;
+  maxOutputTokens?: number; // optional — omit to let the model use its own default limit
   systemInstruction: string;
   documentType: string;
   triggerPhrases?: string[];
