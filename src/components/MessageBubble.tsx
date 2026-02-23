@@ -74,52 +74,14 @@ export const MessageBubble = memo(function MessageBubble({ role, content, isStre
           <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
         ) : (
           <div className="markdown-content text-sm">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {/* Strip the ✅ X/Y topics covered line when we render it as a visual list */}
-              {guidedTopics?.length
-                ? content.replace(/✅\s*\d+\/\d+\s*topics? covered[.\s]*/gi, "").trimEnd()
-                : content}
-            </ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
             {isStreaming && (
               <span className="inline-block w-1.5 h-4 bg-cyan-400 ml-0.5 animate-pulse rounded-sm" />
             )}
           </div>
         )}
 
-        {/* Guided topic checklist — compact 2-col chips */}
-        {!isUser && guidedTopics && guidedTopics.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-border/30">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">Topics</span>
-              <span className={`text-[9px] font-mono font-semibold ${
-                guidedAnswered >= guidedTopics.length ? "text-green-400" : "text-cyan-400/60"
-              }`}>
-                {guidedAnswered}/{guidedTopics.length}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-1">
-              {guidedTopics.map((topic, i) => {
-                const done = i < guidedAnswered;
-                return (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.04, duration: 0.15 }}
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono truncate ${
-                      done
-                        ? "bg-green-500/10 text-green-400/70 border border-green-500/15"
-                        : "bg-secondary/60 text-muted-foreground/50 border border-border/40"
-                    }`}
-                  >
-                    <span className="text-[8px] flex-shrink-0">{done ? "✓" : "·"}</span>
-                    <span className="truncate">{topic}</span>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+
 
         {/* Inline generated images — clickable for fullscreen */}
         {inlineImages && inlineImages.length > 0 && (
