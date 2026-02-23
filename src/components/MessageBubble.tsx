@@ -41,7 +41,7 @@ export function parseOptions(text: string): ParsedOption[] {
   // Pattern 1: bullet/dash + **Label:** text  (bold ends after label)
   // Pattern 2: bullet/dash + **Label: text**  (bold wraps everything)
   // Pattern 3: ▸ or numbered prefix variations
-  const regex = /(?:[-*▸►•]|\d+[).]?)\s*\*\*(?:Option\s+)?([A-Z0-9]+)[):.]?(?:\*\*[:\s]+(.+)|[:\s]+(.+?)\*\*\.?\s*(.*))/gi;
+  const regex = /(?:[-*▸►•]|\d+[).]?)\s*\*\*(?:Option\s+)?([A-Z])[):.]?(?:\*\*[:\s]+(.+)|[:\s]+(.+?)\*\*\.?\s*(.*))/gi;
   for (const m of text.matchAll(regex)) {
     const label = m[1];
     // m[2] = text after closing bold (Pattern 1)
