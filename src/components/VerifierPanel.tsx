@@ -118,33 +118,98 @@ function parseIssuesFromResponse(text: string): VerifierIssue[] {
   const partial = text.match(/~~~issues\s*\n([\s\S]*)/);
   if (partial) {
     const fragment = partial[1].replace(/~~~.*$/, "").trim();
-    // Try parsing as-is (might be complete but missing closing marker)
     try { return JSON.parse(fragment); } catch { /* fallthrough */ }
-    // Try closing the truncated array and parsing
     try { return JSON.parse(fragment + "]"); } catch { /* fallthrough */ }
-    // Last resort: extract individual complete objects
+  }
+
+  // Extract individual issue objects using bracket-depth counting
+  // This handles nested arrays (affectedDocs, evidence) correctly
+  const extractObjects = (src: string): VerifierIssue[] => {
     const objects: VerifierIssue[] = [];
-    const objRegex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
-    for (const m of fragment.matchAll(objRegex)) {
-      try {
-        const obj = JSON.parse(m[0]);
-        if (obj.id && obj.severity) objects.push(obj as VerifierIssue);
-      } catch { /* skip malformed */ }
+    let i = 0;
+    while (i < src.length) {
+      if (src[i] === '{') {
+        let depth = 0;
+        let start = i;
+        let inString = false;
+        let escaped = false;
+        for (let j = i; j < src.length; j++) {
+          const ch = src[j];
+          if (escaped) { escaped = false; continue; }
+          if (ch === '\\') { escaped = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (ch === '{') depth++;
+          if (ch === '}') {
+            depth--;
+            if (depth === 0) {
+              const objStr = src.slice(start, j + 1);
+              try {
+                const obj = JSON.parse(objStr);
+                if (obj.id && obj.severity) objects.push(obj as VerifierIssue);
+              } catch { /* skip malformed */ }
+              i = j + 1;
+              break;
+            }
+          }
+          if (j === src.length - 1) i = j + 1; // prevent infinite loop
+        }
+        if (depth !== 0) i++; // move past if unclosed
+      } else {
+        i++;
+      }
     }
-    if (objects.length > 0) return objects;
+    return objects;
+  };
+
+  // Try from partial ~~~issues block
+  if (partial) {
+    const fragment = partial[1].replace(/~~~.*$/, "").trim();
+    const objs = extractObjects(fragment);
+    if (objs.length > 0) return objs;
   }
 
-  // Deepest fallback: try to find JSON array anywhere in the text (e.g. inside ```json blocks)
-  const jsonArrayMatch = text.match(/```json\s*\n(\[\s*\{[\s\S]*?\]\s*)\n```/);
-  if (jsonArrayMatch) {
-    try { return JSON.parse(jsonArrayMatch[1]); } catch { /* fallthrough */ }
+  // Try to find a JSON array in ```json blocks
+  const jsonBlock = text.match(/```json\s*\n([\s\S]*?)```/);
+  if (jsonBlock) {
+    try { return JSON.parse(jsonBlock[1]); } catch { /* fallthrough */ }
+    const objs = extractObjects(jsonBlock[1]);
+    if (objs.length > 0) return objs;
   }
 
-  // Ultra fallback: find any JSON array that looks like issues
-  const anyArray = text.match(/(\[\s*\{\s*"id"\s*:\s*"[A-Z]+-\d+"[\s\S]*?\])/)
-  if (anyArray) {
-    try { return JSON.parse(anyArray[1]); } catch { /* fallthrough */ }
+  // Find any JSON array starting with [{ anywhere in the text using bracket depth
+  const arrayStart = text.indexOf('[');
+  if (arrayStart >= 0) {
+    // Find matching closing bracket using depth counting
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let j = arrayStart; j < text.length; j++) {
+      const ch = text[j];
+      if (escaped) { escaped = false; continue; }
+      if (ch === '\\') { escaped = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === '[') depth++;
+      if (ch === ']') {
+        depth--;
+        if (depth === 0) {
+          const arrayStr = text.slice(arrayStart, j + 1);
+          try {
+            const parsed = JSON.parse(arrayStr);
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id) {
+              return parsed as VerifierIssue[];
+            }
+          } catch { /* fallthrough */ }
+          break;
+        }
+      }
+    }
   }
+
+  // Ultimate fallback: scan entire text for issue-shaped objects
+  const allObjs = extractObjects(text);
+  if (allObjs.length > 0) return allObjs;
 
   return [];
 }
@@ -154,19 +219,27 @@ function parseSummaryFromResponse(text: string): string {
   const match = text.match(/~~~summary\s*\n([\s\S]*?)~~~/);
   if (match) return match[1].trim();
 
-  // Fallback: look for a TELEMETRY REPORT header or similar
-  const reportMatch = text.match(/#{1,3}\s*(?:TELEMETRY|ENTROPY|VERIFICATION)\s*(?:REPORT|ANALYSIS|SUMMARY)[^\n]*\n([\s\S]*?)(?=\n~~~|$)/i);
+  // Strip out JSON arrays and code blocks to get clean summary text
+  let cleaned = text;
+  // Remove ~~~issues~~~ blocks
+  cleaned = cleaned.replace(/~~~issues[\s\S]*?~~~/g, '');
+  // Remove ```json blocks
+  cleaned = cleaned.replace(/```json[\s\S]*?```/g, '');
+  // Remove bare JSON arrays (bracket-depth aware)
+  cleaned = cleaned.replace(/\[\s*\{[\s\S]*?\}\s*\]/g, '');
+  // Remove remaining ~~~ blocks
+  cleaned = cleaned.replace(/~~~[\s\S]*?~~~/g, '');
+  // Remove ``` blocks
+  cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
+  cleaned = cleaned.trim();
+
+  if (cleaned.length > 50) return cleaned.slice(0, 2000);
+
+  // Fallback: look for a TELEMETRY REPORT header
+  const reportMatch = text.match(/#{1,3}\s*(?:TELEMETRY|ENTROPY|VERIFICATION)\s*(?:REPORT|ANALYSIS|SUMMARY)[^\n]*\n([\s\S]*?)(?=\n~~~|\n```|\n\[|$)/i);
   if (reportMatch) return reportMatch[0].trim().slice(0, 2000);
 
-  // Fallback: if we have issues, use everything before the issues block as summary
-  const beforeIssues = text.split(/~~~issues/)[0]?.trim();
-  if (beforeIssues && beforeIssues.length > 50) return beforeIssues.slice(0, 2000);
-
-  // Last resort: strip JSON/code blocks and use first portion
-  const stripped = text.replace(/```[\s\S]*?```/g, '').replace(/~~~[\s\S]*?~~~/g, '').trim();
-  if (stripped.length > 30) return stripped.slice(0, 1500);
-
-  return text.slice(0, 500) || "Verification completed but no summary was generated.";
+  return cleaned || "Verification completed — see issues below.";
 }
 
 // ── Issue Card — memoized so only re-renders when its own props change ──
