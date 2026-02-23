@@ -68,16 +68,21 @@ export const MessageBubble = memo(function MessageBubble({ role, content, isStre
   // Reset selections when content changes
   useEffect(() => { setSelectedOptions(new Set()); }, [content]);
 
+  // Notify parent when selections change (outside of render to avoid setState-in-render)
+  useEffect(() => {
+    if (!onOptionSelect || options.length === 0) return;
+    const selectedTexts = options.filter(o => selectedOptions.has(o.label)).map(o => `${o.label}: ${o.text}`);
+    onOptionSelect(selectedTexts);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedOptions]);
+
   const toggleOption = useCallback((label: string) => {
     setSelectedOptions(prev => {
       const next = new Set(prev);
       if (next.has(label)) next.delete(label); else next.add(label);
-      // Notify parent of selected option texts
-      const selectedTexts = options.filter(o => next.has(o.label)).map(o => `${o.label}: ${o.text}`);
-      onOptionSelect?.(selectedTexts);
       return next;
     });
-  }, [options, onOptionSelect]);
+  }, []);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(content);
