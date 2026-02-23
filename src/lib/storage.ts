@@ -5,6 +5,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  hidden?: boolean; // Hidden messages are sent to API but not shown in chat UI
 }
 
 export interface DocVersion {

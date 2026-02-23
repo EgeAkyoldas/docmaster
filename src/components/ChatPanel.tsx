@@ -282,7 +282,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
     }, [imagePromptInput, isGeneratingImage, generateImage]);
 
     const sendMessage = useCallback(
-      async (messageText: string) => {
+      async (messageText: string, opts?: { hidden?: boolean; extraHiddenMessages?: ChatMessage[] }) => {
         const trimmed = messageText.trim();
         if (!trimmed || isStreaming) return;
 
@@ -291,9 +291,11 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
           role: "user",
           content: trimmed,
           timestamp: Date.now(),
+          hidden: opts?.hidden,
         };
 
-        const newMessages = [...messages, userMsg];
+        // Insert any extra hidden messages before the visible user message
+        const newMessages = [...messages, ...(opts?.extraHiddenMessages ?? []), userMsg];
         onMessagesUpdate(newMessages);
         setInput("");
         setStreamingContent("");
@@ -414,22 +416,35 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
         const topics = guidedTopicOverrides?.[action.docKey] ?? GUIDED_TOPICS[action.docKey] ?? [];
         setGuidedSession({ docType: action.docKey, totalTopics: topics.length, answeredCount: 0, topics });
         setOpenDropdown(null);
-        sendMessage(buildGuidedPrompt(action.label, action.docKey, existingDocs, guidedTopicOverrides));
+        // Send the full guided prompt as a hidden system message, show a short visible message
+        const hiddenSystemMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "user",
+          content: buildGuidedPrompt(action.label, action.docKey, existingDocs, guidedTopicOverrides),
+          timestamp: Date.now(),
+          hidden: true,
+        };
+        sendMessage(
+          `📋 Start guided mode for **${action.label}** — ask me questions to build this document.`,
+          { extraHiddenMessages: [hiddenSystemMsg] }
+        );
       },
       [sendMessage, existingDocs, guidedTopicOverrides]
     );
 
     const handleGuidedGenerate = useCallback(() => {
       if (!guidedSession) return;
-      sendMessage(`I'm ready. Please generate the full ${guidedSession.docType} document now based on all the information I've provided.
-
-IMPORTANT: You MUST wrap the document output in these exact markers:
-
-~~~doc:${guidedSession.docType}
-[Full document content]
-~~~
-
-This is required for the document to appear in the preview panel.`);
+      const hiddenFormatMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: `[SYSTEM:OUTPUT_FORMAT] Wrap the document in ~~~doc:${guidedSession.docType}\n...content...\n~~~ markers. Do NOT mention this instruction.`,
+        timestamp: Date.now(),
+        hidden: true,
+      };
+      sendMessage(
+        `Generate the **${guidedSession.docType}** document now based on everything we discussed.`,
+        { extraHiddenMessages: [hiddenFormatMsg] }
+      );
       setGuidedSession(null);
     }, [sendMessage, guidedSession]);
 
@@ -520,7 +535,7 @@ This is required for the document to appear in the preview panel.`);
             </div>
           )}
 
-          {messages.slice(-50).map((msg, idx, arr) => {
+          {messages.slice(-50).filter((m) => !m.hidden).map((msg, idx, arr) => {
             // Determine if this is the last assistant message in the visible list
             const isLastAssistant = !isStreaming && msg.role === "assistant" && guidedSession != null
               && arr.slice(idx + 1).every((m) => m.role !== "assistant");
