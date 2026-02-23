@@ -206,15 +206,15 @@ export const DEFAULT_DOC_DEFINITIONS: DocDefinition[] = [
     label: "Design Doc",
     docKey: "Design Document",
     defaultInstruction:
-      "generate a complete Design Document covering system design, trade-offs, and key architectural decisions.",
+      "generate a complete Technical Design Document covering system architecture, data flow, integration design, and key technical trade-offs. Focus on backend architecture, data pipelines, third-party service integrations, deployment strategy, and technical constraints. Do NOT cover UI/UX topics — those belong in the separate UI Design document.",
     color: "violet",
     guidedTopics: [
       "System boundaries & context",
-      "Key trade-offs & decisions",
-      "Data flow overview",
-      "Technology constraints",
-      "Non-functional requirements",
-      "Risk assessment",
+      "Key technical trade-offs & decisions",
+      "Data flow & integration design",
+      "Technology constraints & limitations",
+      "Non-functional requirements (performance, scale)",
+      "Risk assessment & mitigation",
     ],
   },
   {
