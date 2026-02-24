@@ -25,8 +25,8 @@ export function parseDocumentBlocks(text: string): {
 
   for (const line of lines) {
     const trimmed = line.trimEnd();
-    const openMatch = trimmed.match(/^~~~doc:(.+?)~~~?\s*$/) || trimmed.match(/^~~~doc:(.+)$/);
-    const closeMatch = trimmed === "~~~";
+    const openMatch = trimmed.match(/^~~~doc:(.+?)~~~?\s*$/) || trimmed.match(/^~~~doc:(.+)$/) || trimmed.match(/^```doc:(.+?)```?\s*$/) || trimmed.match(/^```doc:(.+)$/);
+    const closeMatch = trimmed === "~~~" || trimmed === "```";
 
     if (openMatch && activeDoc === null) {
       // Start a new doc block

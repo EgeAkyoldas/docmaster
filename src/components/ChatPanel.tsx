@@ -344,7 +344,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
             headers: getApiHeaders(),
             body: JSON.stringify({
               message: trimmed,
-              history: messages.map((m) => ({ role: m.role, content: m.content })),
+              history: newMessages.map((m) => ({ role: m.role, content: m.content })),
               existingDocs,
               verifyReport: verifyReport || undefined,
               customInstructions: customInstructions ?? {},
