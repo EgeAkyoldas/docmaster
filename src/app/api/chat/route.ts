@@ -90,7 +90,18 @@ export async function POST(req: NextRequest) {
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (err) {
-          controller.error(err);
+          // Send error details as SSE event before closing stream
+          const errMsg = err instanceof Error ? err.message : "Unknown streaming error";
+          const status = (err as { status?: number })?.status ?? 500;
+          try {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ error: errMsg, status })}\n\n`)
+            );
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          } catch {
+            controller.error(err);
+          }
         }
       },
     });
@@ -104,9 +115,20 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Chat API error:", error);
+    const status = (error as { status?: number })?.status ?? 500;
+    const message = error instanceof Error ? error.message : "Failed to process chat request";
+    // Map known status codes to user-friendly messages
+    let userMessage = message;
+    if (status === 503 || message.includes("UNAVAILABLE") || message.includes("high demand")) {
+      userMessage = "Model is experiencing high demand. Please try again in a few seconds.";
+    } else if (status === 429 || message.includes("RESOURCE_EXHAUSTED")) {
+      userMessage = "Rate limit exceeded. Please wait a moment and try again.";
+    } else if (status === 401 || status === 403) {
+      userMessage = "Invalid or expired API key. Please check your API key.";
+    }
     return NextResponse.json(
-      { error: "Failed to process chat request" },
-      { status: 500 }
+      { error: userMessage },
+      { status }
     );
   }
 }

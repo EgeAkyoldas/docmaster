@@ -69,8 +69,9 @@ export function extractSection(
     }
   }
 
-  // Require a minimum confidence score — at least 3 matching signals
-  if (bestScore < 3 || !bestSection) return null;
+  // Require a minimum confidence score — at least 20% of hint words must match (minimum 3)
+  const minScore = Math.max(3, Math.ceil(hintWords.length * 0.2));
+  if (bestScore < minScore || !bestSection) return null;
 
   return bestSection;
 }

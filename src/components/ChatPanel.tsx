@@ -6,6 +6,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  memo,
   forwardRef,
   useImperativeHandle,
 } from "react";
@@ -79,13 +80,22 @@ function buildGuidedPrompt(
 ): string {
   const topics = typeTopicOverrides?.[docKey] ?? GUIDED_TOPICS[docKey] ?? [];
   const topicChecklist = topics.map((t) => `- [ ] ${t}`).join("\n");
-  const otherDocs = Object.keys(existingDocs).filter((k) => k !== docKey);
-  const contextNote =
-    otherDocs.length > 0
-      ? `\n\nEXISTING DOCUMENTS (use as context):\n${otherDocs.map((k) => `- ${k}`).join("\n")}`
-      : "";
+  const otherDocEntries = Object.entries(existingDocs).filter(([k]) => k !== docKey);
 
-  return `You are in GUIDED MODE for generating a ${docLabel}.${contextNote}
+  // Build full existing document context (not just names)
+  let contextBlock = "";
+  if (otherDocEntries.length > 0) {
+    contextBlock = `\n\n══════════════════════════════════════
+EXISTING DOCUMENTS — FULL CONTENT (read these carefully to auto-tick topics):
+══════════════════════════════════════\n`;
+    for (const [name, content] of otherDocEntries) {
+      // Truncate very large docs to ~3000 chars to stay within context limits
+      const truncated = content.length > 3000 ? content.slice(0, 3000) + "\n...[truncated]" : content;
+      contextBlock += `\n### 📄 ${name}\n${truncated}\n`;
+    }
+  }
+
+  return `You are in GUIDED MODE for generating a ${docLabel}.${contextBlock}
 
 Your job: Interview me to gather enough information before generating the document.
 
@@ -99,13 +109,13 @@ RULES:
    - **Option B:** [description]
    - **Option C:** [description]
    The user can pick one, combine, or give their own answer. NEVER ask a bare open-ended question without options.
-3. After each answer, check off which topics are now covered.
+3. A topic is ONLY covered when the USER has answered OR when it is auto-filled from an existing document (see rule 12).
 4. If I give a very short or vague answer (e.g. "mono", "yes"), acknowledge it, confirm what you understood, and move to the next topic.
 5. If I say "I don't know" or "skip", suggest the most common industry approach, confirm it as the default, and move on.
-6. NEVER assume or fabricate answers I haven't given.
-7. After each answer, show the current topic checklist using this EXACT markdown checkbox format:
-   - [x] Topic Name (for covered topics)
-   - [ ] Topic Name (for remaining topics)
+6. NEVER assume or fabricate answers I haven't given — but DO use information from existing documents.
+7. After each USER answer (NOT on your first question), show the current topic checklist using this EXACT markdown checkbox format:
+   - [x] Topic Name (for topics the USER has answered OR auto-filled from existing docs)
+   - [ ] Topic Name (for topics not yet answered by the user)
    Then add a summary line: "✅ X/${topics.length} topics covered"
 8. **NEVER auto-generate the document.** Even when most topics are covered, KEEP asking about remaining topics. You may gently mention "We've covered most topics — I can generate whenever you're ready, or we can keep refining!" but ALWAYS continue with the next question. Only generate when I explicitly say "generate", "oluştur", "yaz", or use the Generate Now button.
 9. For any topic NOT covered, explicitly write "[To be determined — not discussed]" in the document.
@@ -114,10 +124,17 @@ RULES:
     - Lists the 3-5 most important decisions made
     - Flags any potential risks or trade-offs
     - Notes any dependencies on other documents or decisions not yet made
+12. **CROSS-DOCUMENT AUTO-FILL:** On your VERY FIRST message, carefully analyze ALL existing documents above. For any topic whose answer is ALREADY clear from those documents:
+    - Mark it as checked: \`[x] Topic Name ← from [DocName]\`
+    - Briefly state what you found (e.g. "From the PRD, I can see you chose Next.js for the frontend")
+    - Ask: "Should I keep this, or would you like to change it?"
+    - Count auto-filled topics toward the covered total
+    For topics NOT found in existing docs, keep them as \`[ ]\` and ask normally.
+    This means your first message may show something like "✅ 3/${topics.length} topics covered (3 auto-filled from existing docs)".
 
 IMPORTANT — OUTPUT FORMAT: When you generate the final document, you MUST wrap it inside these exact markers:
 
-~~~doc:${docLabel}
+~~~doc:${docKey}
 (full document content)
 ~~~
 
@@ -125,7 +142,7 @@ BEFORE the markers, write a brief intro like "Here is your ${docLabel}:".
 AFTER the closing ~~~ marker, write a quick summary (3-5 bullet points) highlighting the most important decisions and features from the document.
 Do NOT mention the markers themselves.
 
-Start by asking the first question now. Remember: include example options!`;
+Start by asking the first question now. First, review existing documents and auto-fill any topics you can. Then ask about the next uncovered topic with example options!`;
 }
 
 // DOC_ACTIONS is just the shared definitions — prompt building uses customInstructions at call site
@@ -155,6 +172,137 @@ interface PendingImage {
   image?: InlineImage;
   fallbackText?: string;
 }
+
+/* ─── Memoized message list ─── isolates from input state changes ─── */
+interface MessageListProps {
+  messages: ChatMessage[];
+  isStreaming: boolean;
+  streamingContent: string;
+  guidedSession: GuidedSession | null;
+  pendingImages: PendingImage[];
+  onSetInput: (v: string) => void;
+  onImageClick: (data: ImageModalData) => void;
+  bottomRef: React.RefObject<HTMLDivElement | null>;
+}
+
+const MemoizedMessageList = memo(function MemoizedMessageList({
+  messages,
+  isStreaming,
+  streamingContent,
+  guidedSession,
+  pendingImages,
+  onSetInput,
+  onImageClick,
+  bottomRef,
+}: MessageListProps) {
+  // Memoize visible messages to avoid slice + filter on every render
+  const visibleMessages = useMemo(
+    () => messages.slice(-50).filter((m) => !m.hidden),
+    [messages]
+  );
+
+  // Pre-compute the index of the last assistant message — needed for option chips
+  const lastAssistantIdx = useMemo(() => {
+    if (isStreaming) return -1;
+    for (let i = visibleMessages.length - 1; i >= 0; i--) {
+      if (visibleMessages[i].role === "assistant") return i;
+    }
+    return -1;
+  }, [visibleMessages, isStreaming]);
+
+  // Stable callback for option select
+  const handleOptionSelect = useCallback(
+    (selected: string[]) => {
+      onSetInput(selected.length > 0 ? selected.join("\n") : "");
+    },
+    [onSetInput]
+  );
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages">
+      <AnimatePresence>
+        {messages.length === 0 && !isStreaming && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center h-full text-center py-12"
+          >
+            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4">
+              <span className="text-2xl">⚡</span>
+            </div>
+            <h3 className="font-mono font-semibold text-foreground mb-2">APEX-CYBERNETIC Online</h3>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Describe your project and I&apos;ll guide you through creating a complete documentation suite.
+            </p>
+            <p className="text-xs text-muted-foreground/60 mt-3 font-mono">
+              PRD → Design → Tech Spec → Architecture → UI Design → Tasks
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Windowed rendering: collapse messages older than last 50 */}
+      {messages.length > 50 && (
+        <div className="text-center py-2">
+          <button
+            onClick={() => {
+              const el = document.getElementById("chat-messages");
+              const firstVisible = el?.querySelector(".msg-bubble");
+              firstVisible?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className="text-[10px] font-mono text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          >
+            ↑ {messages.length - 50} older messages (scroll up to load)
+          </button>
+        </div>
+      )}
+
+      {visibleMessages.map((msg, idx) => (
+        <div key={msg.id} className="msg-bubble">
+          <MessageBubble
+            role={msg.role}
+            content={msg.content}
+            onImageClick={onImageClick}
+            guidedTopics={guidedSession && msg.role === "assistant" ? guidedSession.topics : undefined}
+            guidedAnswered={guidedSession && msg.role === "assistant" ? guidedSession.answeredCount : undefined}
+            isLastAssistant={idx === lastAssistantIdx}
+            onOptionSelect={handleOptionSelect}
+          />
+        </div>
+      ))}
+
+      {isStreaming && streamingContent && (
+        <MessageBubble
+          role="assistant"
+          content={streamingContent.replace(/<doc:[^>]*>[\s\S]*$/i, "").trim() || streamingContent}
+          isStreaming
+          guidedTopics={guidedSession?.topics}
+          guidedAnswered={guidedSession?.answeredCount}
+        />
+      )}
+      {isStreaming && !streamingContent && <TypingIndicator />}
+
+      {/* Pending image generation results */}
+      {pendingImages.map((pi, i) =>
+        pi.status === "loading" ? (
+          <ImageGeneratingBubble key={i} prompt={pi.prompt} />
+        ) : pi.status === "done" && pi.image ? (
+          <MessageBubble
+            key={i}
+            role="assistant"
+            content=""
+            inlineImages={[pi.image]}
+            onImageClick={onImageClick}
+          />
+        ) : (
+          <ImageErrorBubble key={i} prompt={pi.prompt} fallbackText={pi.fallbackText} />
+        )
+      )}
+
+      <div ref={bottomRef} />
+    </div>
+  );
+});
 
 export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
   function ChatPanel(
@@ -199,36 +347,30 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
     const imageInputRef = useRef<HTMLInputElement>(null);
     const abortRef = useRef<AbortController | null>(null);
 
-    // Parse coverage from AI messages or live streaming content
-    // Strategy 1: "✅ X/Y topics covered" summary line
-    // Strategy 2: Count [x] checkboxes vs total checkboxes in message
+    // Track guided session coverage by counting user messages sent after session started.
+    // Each user reply = one topic answered. This is far more reliable than pattern-matching
+    // [x] checkboxes or "✅ X/Y topics" strings in AI responses.
+    const guidedStartMsgCount = useRef<number | null>(null);
     const autoGenTriggered = useRef(false);
     useEffect(() => {
-      if (!guidedSession) return;
-      // Check streaming content first (real-time), then fall back to committed messages
-      const textToCheck = streamingContent ||
-        ([...messages].reverse().find((m) => m.role === "assistant")?.content ?? "");
-
-      let answered = 0;
-
-      // Strategy 1: explicit "✅ X/Y topics covered"
-      const summaryMatch = textToCheck.match(/✅\s*(\d+)\/(\d+)\s*topics? covered/i);
-      if (summaryMatch) {
-        answered = parseInt(summaryMatch[1], 10);
-      } else {
-        // Strategy 2: count [x] vs [ ] checkboxes
-        const checked = (textToCheck.match(/\[x\]/gi) || []).length;
-        const unchecked = (textToCheck.match(/\[ \]/g) || []).length;
-        if (checked + unchecked > 0) {
-          answered = checked;
-        }
+      if (!guidedSession) {
+        guidedStartMsgCount.current = null;
+        return;
       }
-
-      if (answered > 0) {
+      // On first render with a new guided session, snapshot the current visible user msg count
+      if (guidedStartMsgCount.current === null) {
+        // +1 because the "Start guided mode..." trigger message is already in messages
+        guidedStartMsgCount.current = messages.filter((m) => m.role === "user" && !m.hidden).length;
+      }
+      // Count user messages since guided session started
+      const currentUserMsgs = messages.filter((m) => m.role === "user" && !m.hidden).length;
+      const answered = Math.max(0, currentUserMsgs - guidedStartMsgCount.current);
+      // Only update if changed to avoid render loops
+      if (answered !== guidedSession.answeredCount) {
         setGuidedSession((prev) => prev ? { ...prev, answeredCount: answered } : null);
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [messages, streamingContent]);
+    }, [messages]);
 
     useImperativeHandle(ref, () => ({
       prefillInput: (text: string) => {
@@ -317,6 +459,29 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
         const trimmed = messageText.trim();
         if (!trimmed || isStreaming) return;
 
+        // ── Auto-inject doc format markers when guided session is active ──
+        // If the user manually types a generate intent (e.g. "generate", "genrate doc", "oluştur")
+        // instead of clicking the Generate Now button, we still want the hidden format message
+        // so the AI wraps the document in ~~~doc:XYZ~~~ markers for the preview panel.
+        let extraMessages = opts?.extraHiddenMessages ?? [];
+        if (guidedSession) {
+          const lower = trimmed.toLowerCase();
+          const isGenerateIntent = /\b(generat|genrate|oluştur|olustur|üret|uret|yaz|yazır|create|produce|build)\b/i.test(lower);
+          const alreadyHasFormatMsg = extraMessages.some((m) => m.content.includes("~~~doc:"));
+          if (isGenerateIntent && !alreadyHasFormatMsg) {
+            const formatMsg: ChatMessage = {
+              id: crypto.randomUUID(),
+              role: "user",
+              content: `IMPORTANT: You MUST wrap the document inside these exact markers:\n\n~~~doc:${guidedSession.docType}\n(full document here)\n~~~\n\nAFTER the closing ~~~ marker, write a quick summary (3-5 bullet points) highlighting the most important decisions and features. Do NOT mention the markers themselves.`,
+              timestamp: Date.now(),
+              hidden: true,
+            };
+            extraMessages = [...extraMessages, formatMsg];
+            // Clear guided session like handleGuidedGenerate does
+            setGuidedSession(null);
+          }
+        }
+
         const userMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: "user",
@@ -326,7 +491,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
         };
 
         // Insert any extra hidden messages before the visible user message
-        const newMessages = [...messages, ...(opts?.extraHiddenMessages ?? []), userMsg];
+        const newMessages = [...messages, ...extraMessages, userMsg];
         onMessagesUpdate(newMessages);
         setInput("");
         setStreamingContent("");
@@ -352,25 +517,54 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
             signal: controller.signal,
           });
 
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          if (!response.ok) {
+            // Parse server error for specific messages
+            let serverMsg = "";
+            try {
+              const errBody = await response.json();
+              serverMsg = errBody.error || "";
+            } catch { /* ignore */ }
+            const status = response.status;
+            if (status === 503 || serverMsg.includes("high demand")) {
+              throw new Error("🔄 Model is experiencing high demand. Please try again in a few seconds.");
+            } else if (status === 429) {
+              throw new Error("⏳ Rate limit exceeded. Please wait a moment and try again.");
+            } else if (status === 401 || status === 403) {
+              throw new Error("🔑 Invalid or expired API key. Please check your API key.");
+            }
+            throw new Error(serverMsg || `HTTP error! status: ${status}`);
+          }
 
           const reader = response.body?.getReader();
           const decoder = new TextDecoder();
           let fullText = "";
           // Track whether a RAF is scheduled to batch streaming state updates
           let rafId: number | null = null;
+          let sseBuffer = ""; // Buffer for partial SSE lines split across chunks
 
           if (reader) {
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
-              const chunk = decoder.decode(value, { stream: true });
-              for (const line of chunk.split("\n")) {
+              sseBuffer += decoder.decode(value, { stream: true });
+              const sseLines = sseBuffer.split("\n");
+              sseBuffer = sseLines.pop() ?? ""; // Keep incomplete last line in buffer
+              for (const line of sseLines) {
                 if (line.startsWith("data: ")) {
                   const data = line.slice(6);
                   if (data === "[DONE]") break;
                   try {
                     const parsed = JSON.parse(data);
+                    if (parsed.error) {
+                      // SSE error event from server (e.g. mid-stream 503)
+                      const status = parsed.status || 500;
+                      if (status === 503 || parsed.error.includes("UNAVAILABLE") || parsed.error.includes("high demand")) {
+                        throw new Error("🔄 Model is experiencing high demand. Please try again in a few seconds.");
+                      } else if (status === 429) {
+                        throw new Error("⏳ Rate limit exceeded. Please wait a moment and try again.");
+                      }
+                      throw new Error(parsed.error);
+                    }
                     if (parsed.text) {
                       fullText += parsed.text;
                       // Batch UI updates to 60fps — don't call setState on every token
@@ -381,7 +575,10 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
                         });
                       }
                     }
-                  } catch { /* ignore */ }
+                  } catch (e) {
+                    // Re-throw our custom error messages, ignore JSON parse errors
+                    if (e instanceof Error && e.message.startsWith("🔄") || e instanceof Error && e.message.startsWith("⏳")) throw e;
+                  }
                 }
               }
             }
@@ -417,7 +614,9 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
             const errorMsg: ChatMessage = {
               id: crypto.randomUUID(),
               role: "assistant",
-              content: "⚠️ Connection error. Please check your API key and try again.",
+              content: err.message.startsWith("🔄") || err.message.startsWith("⏳") || err.message.startsWith("🔑")
+                ? err.message
+                : "⚠️ Connection error. Please check your API key and try again.",
               timestamp: Date.now(),
             };
             onMessagesUpdate([...newMessages, errorMsg]);
@@ -428,7 +627,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
           abortRef.current = null;
         }
       },
-      [isStreaming, messages, existingDocs, onMessagesUpdate, onDocumentsUpdate, onStreamingChange, generateImage]
+      [isStreaming, messages, existingDocs, guidedSession, onMessagesUpdate, onDocumentsUpdate, onStreamingChange, generateImage]
     );
 
     const handleSend = useCallback(() => sendMessage(input), [input, sendMessage]);
@@ -540,100 +739,17 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
           />
         )}
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages">
-          <AnimatePresence>
-            {messages.length === 0 && !isStreaming && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center h-full text-center py-12"
-              >
-                <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4">
-                  <span className="text-2xl">⚡</span>
-                </div>
-                <h3 className="font-mono font-semibold text-foreground mb-2">APEX-CYBERNETIC Online</h3>
-                <p className="text-sm text-muted-foreground max-w-xs">
-                  Describe your project and I&apos;ll guide you through creating a complete documentation suite.
-                </p>
-                <p className="text-xs text-muted-foreground/60 mt-3 font-mono">
-                  PRD → Design → Tech Spec → Architecture → UI Design → Tasks
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Windowed rendering: collapse messages older than last 50 */}
-          {messages.length > 50 && (
-            <div className="text-center py-2">
-              <button
-                onClick={() => {
-                  const el = document.getElementById("chat-messages");
-                  const firstVisible = el?.querySelector(".msg-bubble");
-                  firstVisible?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-                className="text-[10px] font-mono text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-              >
-                ↑ {messages.length - 50} older messages (scroll up to load)
-              </button>
-            </div>
-          )}
-
-          {messages.slice(-50).filter((m) => !m.hidden).map((msg, idx, arr) => {
-            // Determine if this is the last assistant message in the visible list
-            const isLastAssistant = !isStreaming && msg.role === "assistant" && guidedSession != null
-              && arr.slice(idx + 1).every((m) => m.role !== "assistant");
-            return (
-              <div key={msg.id} className="msg-bubble">
-                <MessageBubble
-                  role={msg.role}
-                  content={msg.content}
-                  onImageClick={setImageModalData}
-                  guidedTopics={guidedSession && msg.role === "assistant" ? guidedSession.topics : undefined}
-                  guidedAnswered={guidedSession && msg.role === "assistant" ? guidedSession.answeredCount : undefined}
-                  isLastAssistant={isLastAssistant}
-                  onOptionSelect={(selected) => {
-                    if (selected.length > 0) {
-                      setInput(selected.join("\n"));
-                    } else {
-                      setInput("");
-                    }
-                  }}
-                />
-              </div>
-            );
-          })}
-
-          {isStreaming && streamingContent && (
-            <MessageBubble
-              role="assistant"
-              content={streamingContent.replace(/<doc:[^>]*>[\s\S]*$/i, "").trim() || streamingContent}
-              isStreaming
-              guidedTopics={guidedSession?.topics}
-              guidedAnswered={guidedSession?.answeredCount}
-            />
-          )}
-          {isStreaming && !streamingContent && <TypingIndicator />}
-
-          {/* Pending image generation results */}
-          {pendingImages.map((pi, i) =>
-            pi.status === "loading" ? (
-              <ImageGeneratingBubble key={i} prompt={pi.prompt} />
-            ) : pi.status === "done" && pi.image ? (
-              <MessageBubble
-                key={i}
-                role="assistant"
-                content=""
-                inlineImages={[pi.image]}
-                onImageClick={setImageModalData}
-              />
-            ) : (
-              <ImageErrorBubble key={i} prompt={pi.prompt} fallbackText={pi.fallbackText} />
-            )
-          )}
-
-          <div ref={bottomRef} />
-        </div>
+        {/* Messages — isolated from input state to prevent re-renders on keystroke */}
+        <MemoizedMessageList
+          messages={messages}
+          isStreaming={isStreaming}
+          streamingContent={streamingContent}
+          guidedSession={guidedSession}
+          pendingImages={pendingImages}
+          onSetInput={setInput}
+          onImageClick={setImageModalData}
+          bottomRef={bottomRef}
+        />
 
         {/* Document Quick-Action Toolbar */}
         <div className="flex-shrink-0 border-t border-border relative">

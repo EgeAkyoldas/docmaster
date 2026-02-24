@@ -108,8 +108,8 @@ function severityBadge(severity: string) {
 }
 
 function parseIssuesFromResponse(text: string): VerifierIssue[] {
-  // Try the well-formed block first (with closing ~~~)
-  const full = text.match(/~~~issues\s*\n([\s\S]*?)~~~/);
+  // Try the well-formed block first (with closing ~~~ on its own line)
+  const full = text.match(/~~~issues\s*\n([\s\S]*?)\n~~~/m);
   if (full) {
     try { return JSON.parse(full[1]); } catch { /* fallthrough */ }
   }
@@ -215,8 +215,8 @@ function parseIssuesFromResponse(text: string): VerifierIssue[] {
 }
 
 function parseSummaryFromResponse(text: string): string {
-  // Try the well-formed ~~~summary~~~ block first
-  const match = text.match(/~~~summary\s*\n([\s\S]*?)~~~/);
+  // Try the well-formed ~~~summary~~~ block first (case-insensitive)
+  const match = text.match(/~~~summary\s*\n([\s\S]*?)\n~~~/im);
   if (match) return match[1].trim();
 
   let cleaned = text;
@@ -555,13 +555,16 @@ export function VerifierPanel({
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let full = "";
+      let sseBuffer = ""; // Buffer for partial SSE lines split across chunks
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          for (const line of chunk.split("\n")) {
+          sseBuffer += decoder.decode(value, { stream: true });
+          const sseLines = sseBuffer.split("\n");
+          sseBuffer = sseLines.pop() ?? ""; // Keep incomplete last line
+          for (const line of sseLines) {
             if (line.startsWith("data: ")) {
               const data = line.slice(6);
               if (data === "[DONE]") break;
@@ -600,11 +603,15 @@ export function VerifierPanel({
     const reader = res.body?.getReader();
     const decoder = new TextDecoder();
     let full = "";
+    let buf = ""; // Buffer for partial SSE lines split across chunks
     if (!reader) return full;
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      for (const line of decoder.decode(value, { stream: true }).split("\n")) {
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() ?? "";
+      for (const line of lines) {
         if (!line.startsWith("data: ")) continue;
         const data = line.slice(6);
         if (data === "[DONE]") break;
@@ -627,7 +634,12 @@ export function VerifierPanel({
         if (!res.ok) return;
         const raw = await streamFull(res);
         const newIssues = parseIssuesFromResponse(raw);
-        const stillPresent = newIssues.some((i) => i.id === issueId);
+        const originalIssue = verifierStateRef.current.issues.find(i => i.id === issueId);
+        // AI may re-assign different IDs — also check title + targetDoc as fallback
+        const stillPresent = newIssues.some((i) =>
+          i.id === issueId ||
+          (originalIssue && i.targetDoc === originalIssue.targetDoc && i.title === originalIssue.title)
+        );
         // Update patchStatus in issues list
         updateState({
           issues: verifierStateRef.current.issues.map((i) =>

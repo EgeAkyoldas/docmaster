@@ -21,15 +21,24 @@ function normalizeMarkdown(raw: string): string {
   const lines = raw.split("\n");
   const out: string[] = [];
   let inFence = false;
+  let fenceType: string | null = null; // Track which fence type opened the block
 
   const isListLine = (l: string) => /^\s*[-*+•▸►]\s|^\s*\d+[.)]\s/.test(l);
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const trimmedStart = line.trimStart();
 
     // Track fenced code blocks — don't touch content inside them
-    if (/^```/.test(line.trimStart()) || /^~~~(?!doc:)/.test(line.trimStart())) {
-      inFence = !inFence;
+    if (/^```/.test(trimmedStart) || /^~~~(?!doc:)/.test(trimmedStart)) {
+      if (!inFence) {
+        inFence = true;
+        fenceType = trimmedStart.startsWith("```") ? "```" : "~~~";
+      } else if (fenceType && trimmedStart.startsWith(fenceType)) {
+        inFence = false;
+        fenceType = null;
+      }
+      // else: different fence type inside a fence — treat as content
       out.push(line);
       continue;
     }

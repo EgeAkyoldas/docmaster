@@ -21,24 +21,70 @@ export function parseDocumentBlocks(text: string): {
   const cleanLines: string[] = [];
 
   let activeDoc: string | null = null;
+  let docFenceType: string | null = null; // Which fence opened the doc block: "~~~" or "```"
+  let innerFenceDepth = 0; // Track nested code fences inside doc blocks
   const docLines: string[] = [];
 
   for (const line of lines) {
     const trimmed = line.trimEnd();
     const openMatch = trimmed.match(/^~~~doc:(.+?)~~~?\s*$/) || trimmed.match(/^~~~doc:(.+)$/) || trimmed.match(/^```doc:(.+?)```?\s*$/) || trimmed.match(/^```doc:(.+)$/);
-    const closeMatch = trimmed === "~~~" || trimmed === "```";
 
     if (openMatch && activeDoc === null) {
-      // Start a new doc block
+      // Start a new doc block — remember which fence type opened it
       activeDoc = openMatch[1].trim();
+      docFenceType = trimmed.startsWith("```") ? "```" : "~~~";
       docLines.length = 0;
-    } else if (closeMatch && activeDoc !== null) {
-      // Close the current doc block
-      documents[activeDoc] = docLines.join("\n").trim();
-      activeDoc = null;
+      innerFenceDepth = 0;
     } else if (activeDoc !== null) {
-      // Inside a doc block — collect content
-      docLines.push(line);
+      // We're inside a doc block
+      const isTilde = trimmed === "~~~" || /^~~~\s*\w+/.test(trimmed);
+      const isBacktick = trimmed === "```" || /^```\s*\w+/.test(trimmed);
+      const isStandaloneTilde = trimmed === "~~~";
+      const isStandaloneBacktick = trimmed === "```";
+
+      if (docFenceType === "~~~") {
+        // Doc opened with ~~~ — only ~~~ can close it, ``` is always inner content
+        if (innerFenceDepth > 0) {
+          // Inside a nested code fence — track close
+          docLines.push(line);
+          if (isStandaloneTilde || isStandaloneBacktick) {
+            innerFenceDepth--;
+          } else if (isTilde || isBacktick) {
+            // Opening a deeper nested fence (rare but possible)
+            innerFenceDepth++;
+          }
+        } else if (isStandaloneTilde) {
+          // Standalone ~~~ closes the doc block
+          documents[activeDoc] = docLines.join("\n").trim();
+          activeDoc = null;
+          docFenceType = null;
+        } else if (isTilde || isBacktick) {
+          // Opens an inner code fence
+          innerFenceDepth++;
+          docLines.push(line);
+        } else {
+          docLines.push(line);
+        }
+      } else {
+        // Doc opened with ``` — only ``` can close it, ~~~ is always inner content
+        if (innerFenceDepth > 0) {
+          docLines.push(line);
+          if (isStandaloneTilde || isStandaloneBacktick) {
+            innerFenceDepth--;
+          } else if (isTilde || isBacktick) {
+            innerFenceDepth++;
+          }
+        } else if (isStandaloneBacktick) {
+          documents[activeDoc] = docLines.join("\n").trim();
+          activeDoc = null;
+          docFenceType = null;
+        } else if (isTilde || isBacktick) {
+          innerFenceDepth++;
+          docLines.push(line);
+        } else {
+          docLines.push(line);
+        }
+      }
     } else {
       // Outside any doc block — keep for cleanText
       cleanLines.push(line);
