@@ -64,24 +64,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SAVE-01 | — | Pending |
-| SAVE-02 | — | Pending |
-| SAVE-03 | — | Pending |
-| SAVE-04 | — | Pending |
-| STRM-01 | — | Pending |
-| STRM-02 | — | Pending |
-| ERRV-01 | — | Pending |
-| ERRV-02 | — | Pending |
-| ERRV-03 | — | Pending |
-| DVAL-01 | — | Pending |
-| DVAL-02 | — | Pending |
-| DVAL-03 | — | Pending |
+| SAVE-01 | Phase 1 | Pending |
+| SAVE-02 | Phase 1 | Pending |
+| SAVE-03 | Phase 2 | Pending |
+| SAVE-04 | Phase 2 | Pending |
+| STRM-01 | Phase 3 | Pending |
+| STRM-02 | Phase 3 | Pending |
+| ERRV-01 | Phase 2 | Pending |
+| ERRV-02 | Phase 2 | Pending |
+| ERRV-03 | Phase 2 | Pending |
+| DVAL-01 | Phase 4 | Pending |
+| DVAL-02 | Phase 4 | Pending |
+| DVAL-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 12 total
-- Mapped to phases: 0
-- Unmapped: 12
+- Mapped to phases: 12
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-16*
-*Last updated: 2026-04-16 after initial definition*
+*Last updated: 2026-04-16 — traceability filled after roadmap creation*
