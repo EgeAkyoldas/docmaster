@@ -211,7 +211,15 @@ let _docDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let _pendingDocSession: Session | null = null;
 
 export function debouncedSaveDocuments(session: Session, delayMs = 150): void {
-  _pendingDocSession = session;
+  if (_pendingDocSession) {
+    // Merge documents — pending (older) first, incoming (newer) second — newer wins on conflict
+    _pendingDocSession = {
+      ...session,
+      documents: { ..._pendingDocSession.documents, ...session.documents },
+    };
+  } else {
+    _pendingDocSession = session;
+  }
   if (_docDebounceTimer) clearTimeout(_docDebounceTimer);
   _docDebounceTimer = setTimeout(() => {
     if (_pendingDocSession) {
