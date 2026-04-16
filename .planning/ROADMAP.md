@@ -27,7 +27,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. User generates two documents back-to-back within 150ms and both appear in the preview panel
   2. After any document generation, the document is present in IndexedDB immediately (not lost to debounce overwrite)
   3. Rapid successive document saves accumulate (merge) rather than overwrite pending state
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 01-01-PLAN.md — Install test infrastructure, write failing tests (RED), apply merge fix, verify GREEN
 
 ### Phase 2: User Feedback Layer
 **Goal**: Users can see confirmation that documents saved and understand what went wrong when errors occur
@@ -68,7 +71,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Save Pipeline Fix | 0/TBD | Not started | - |
+| 1. Save Pipeline Fix | 0/1 | Ready to execute | - |
 | 2. User Feedback Layer | 0/TBD | Not started | - |
 | 3. Stream Protection | 0/TBD | Not started | - |
 | 4. Document Validation | 0/TBD | Not started | - |
