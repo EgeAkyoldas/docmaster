@@ -22,7 +22,7 @@ export async function streamChat(options: StreamChatOptions) {
   const ai = new GoogleGenAI({ apiKey });
 
   const {
-    model = process.env.GEMINI_REASONING_MODEL ?? "gemini-3-flash-preview",
+    model = process.env.GEMINI_REASONING_MODEL ?? "gemini-3.5-flash",
     systemInstruction,
     history,
     message,

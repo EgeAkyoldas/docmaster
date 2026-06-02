@@ -6,15 +6,14 @@ const KEY_STORAGE = "docmaster_gemini_api_key";
 const MODEL_STORAGE = "docmaster_gemini_model";
 
 export const GEMINI_MODELS = [
-  { id: "gemini-2.5-flash-lite",  label: "Flash 2.5 Lite",  badge: "Fastest" },
-  { id: "gemini-2.5-flash",       label: "Flash 2.5",       badge: "Fast" },
-  { id: "gemini-2.5-pro",         label: "Pro 2.5",         badge: "Smart" },
-  { id: "gemini-3-flash-preview", label: "Flash 3",         badge: "New" },
-  { id: "gemini-3-pro-preview",   label: "Pro 3",           badge: "Best" },
+  { id: "gemini-3.1-flash-lite",  label: "Flash 3.1 Lite",  badge: "Fastest" },
+  { id: "gemini-3.5-flash",       label: "Flash 3.5",       badge: "Fast" },
+  { id: "gemini-3.1-pro-preview", label: "Pro 3.1",         badge: "Best" },
 ] as const;
 
 export type GeminiModelId = typeof GEMINI_MODELS[number]["id"];
-export const DEFAULT_MODEL: GeminiModelId = "gemini-2.5-flash-lite";
+// Default to flash (not flash-lite): lite truncates long multi-section documents.
+export const DEFAULT_MODEL: GeminiModelId = "gemini-3.5-flash";
 
 export function useApiKey() {
   const [apiKey, setApiKeyState] = useState<string>("");
