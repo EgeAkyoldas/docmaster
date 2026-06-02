@@ -8,7 +8,9 @@ import { ProductGuide } from "@/components/ProductGuide";
 import { ChatPanel, ChatPanelHandle } from "@/components/ChatPanel";
 import { DocPreview } from "@/components/DocPreview";
 import { SessionSettings } from "@/components/SessionSettings";
+import { ModeSelectModal } from "@/components/ModeSelectModal";
 import { INITIAL_VERIFIER_STATE, VerifierState } from "@/components/VerifierPanel";
+import { getDefaultMode, setDefaultMode, type DocMode } from "@/lib/mode";
 import {
   getSession,
   saveSession,
@@ -163,6 +165,19 @@ export default function SessionPage() {
     []
   );
 
+  const handleModeUpdate = useCallback(
+    (mode: DocMode) => {
+      setDefaultMode(mode);
+      setSession((prev) => {
+        if (!prev) return prev;
+        const updated = { ...prev, mode, updatedAt: Date.now() };
+        void saveSession(updated);
+        return updated;
+      });
+    },
+    []
+  );
+
   const handleEnabledDocsUpdate = useCallback(
     (enabledDocs: string[]) => {
       setSession((prev) => {
@@ -289,9 +304,11 @@ export default function SessionPage() {
             customInstructions={session.customInstructions}
             guidedTopicOverrides={PROJECT_TYPE_PRESETS.find((p) => p.id === session.projectType)?.guidedTopicOverrides}
             verifyReport={verifierState.rawReport || null}
+            mode={session.mode ?? getDefaultMode()}
             onMessagesUpdate={handleMessagesUpdate}
             onDocumentsUpdate={handleDocumentsUpdate}
             onStreamingChange={setIsStreaming}
+            onModeChange={handleModeUpdate}
           />
         </div>
 
@@ -333,6 +350,12 @@ export default function SessionPage() {
         onClose={() => setSettingsOpen(false)}
         onUpdate={handleCustomInstructionsUpdate}
         onEnabledDocsUpdate={handleEnabledDocsUpdate}
+      />
+
+      {/* First-entry mode selector — only on a fresh session with no mode chosen */}
+      <ModeSelectModal
+        open={session.mode === undefined && session.messages.length === 0}
+        onSelect={handleModeUpdate}
       />
 
       {/* Product Guide */}

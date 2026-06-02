@@ -27,6 +27,7 @@ export interface Session {
   documents: Record<string, string>;
   documentHistory: DocVersion[];
   customInstructions?: Record<string, string>;
+  mode?: "auto" | "guided"; // document-generation default; undefined = not yet chosen
 }
 
 // ---------------------------------------------------------------------------

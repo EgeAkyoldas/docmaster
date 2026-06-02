@@ -24,6 +24,7 @@ import {
   InlineImage,
 } from "./MessageBubble";
 import { ChatMessage } from "@/lib/storage";
+import type { DocMode } from "@/lib/mode";
 import { parseDocumentBlocks, parseImageMarkers } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import {
@@ -160,9 +161,11 @@ interface ChatPanelProps {
   customInstructions?: Record<string, string>;
   guidedTopicOverrides?: Record<string, string[]>;
   verifyReport?: string | null;
+  mode?: DocMode;
   onMessagesUpdate: (messages: ChatMessage[]) => void;
   onDocumentsUpdate: (docs: Record<string, string>) => void;
   onStreamingChange: (streaming: boolean) => void;
+  onModeChange?: (mode: DocMode) => void;
 }
 
 // Pending image requests during/after streaming
@@ -314,9 +317,11 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
       customInstructions,
       guidedTopicOverrides,
       verifyReport,
+      mode = "guided",
       onMessagesUpdate,
       onDocumentsUpdate,
       onStreamingChange,
+      onModeChange,
     },
     ref
   ) {
@@ -712,6 +717,31 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
         {/* Chat Header with Settings */}
         <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-border">
           <span className="text-xs font-mono font-semibold text-muted-foreground uppercase tracking-widest">Chat</span>
+          <div className="flex items-center gap-2">
+            {/* Mode toggle — global default for document generation */}
+            <div className="flex items-center rounded-md border border-border bg-secondary/40 p-0.5" title="Default mode when generating documents">
+              {(["guided", "auto"] as const).map((m) => {
+                const active = mode === m;
+                const Icon = m === "guided" ? MessageSquare : Zap;
+                return (
+                  <button
+                    key={m}
+                    onClick={() => onModeChange?.(m)}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded text-[11px] font-mono font-medium capitalize transition-all duration-150",
+                      active
+                        ? m === "guided"
+                          ? "bg-cyan-500/15 text-cyan-400"
+                          : "bg-amber-500/15 text-amber-400"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="w-3 h-3" />
+                    {m}
+                  </button>
+                );
+              })}
+            </div>
           <button
             onClick={() => setSettingsOpen(true)}
             title={hasKey ? "API key set — click to change" : "Set your Gemini API key"}
@@ -728,6 +758,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
               <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             )}
           </button>
+          </div>
         </div>
 
         {/* Guided Progress Bar */}
@@ -823,8 +854,10 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
                       <div key={action.label} className="relative">
                         <motion.button
                           onClick={() => {
-                            if (hasGuided) {
-                              setOpenDropdown(isDropdownOpen ? null : action.label);
+                            // Main click runs the global mode default; the chevron
+                            // (below) opens the per-doc override menu.
+                            if (mode === "guided" && hasGuided) {
+                              handleDocGuided(action);
                             } else {
                               handleDocAuto(action);
                             }
@@ -837,12 +870,36 @@ export const ChatPanel = forwardRef<ChatPanelHandle, ChatPanelProps>(
                             COLOR_MAP[action.color],
                             isCreated && "opacity-50"
                           )}
-                          title={isCreated ? `${action.label} exists — click to regenerate` : `Generate ${action.label}`}
+                          title={
+                            isCreated
+                              ? `${action.label} exists — click to regenerate (${mode})`
+                              : `Generate ${action.label} (${mode}) — chevron for options`
+                          }
                         >
                           <Plus className="w-3 h-3" />
                           {action.label}
                           {isCreated && <span className="text-[8px] opacity-70">✓</span>}
-                          {hasGuided && <ChevronDown className={cn("w-3 h-3 opacity-50 transition-transform duration-200", isDropdownOpen && "rotate-180 opacity-100")} />}
+                          {hasGuided && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              aria-label={`${action.label} mode options`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isStreaming) setOpenDropdown(isDropdownOpen ? null : action.label);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setOpenDropdown(isDropdownOpen ? null : action.label);
+                                }
+                              }}
+                              className="-mr-1 ml-0.5 p-0.5 rounded hover:bg-white/10 cursor-pointer"
+                            >
+                              <ChevronDown className={cn("w-3 h-3 opacity-50 transition-transform duration-200", isDropdownOpen && "rotate-180 opacity-100")} />
+                            </span>
+                          )}
                         </motion.button>
 
                         {/* Auto / Guided dropdown — opens UPWARD */}
